@@ -19,8 +19,11 @@ model User {
   banExpiresAt  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  sessions            Session[]
+  accounts            Account[]
+  requirementsCreated Requirement[] @relation("RequirementsCreated")
+  revisionsCreated    Revision[]    @relation("RevisionsCreated")
+  releasesCreated     Release[]     @relation("ReleasesCreated")
 
   @@unique([email])
   @@map("user")
@@ -73,4 +76,83 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Domain {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  requirements Requirement[]
+
+  @@map("domain")
+}
+
+model BusinessRole {
+  id           String            @id @default(uuid())
+  name         String            @unique
+  isGlobal     Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  requirements RequirementRole[]
+
+  @@map("business_role")
+}
+
+model Requirement {
+  id          String            @id @default(uuid())
+  title       String
+  domainId    String
+  domain      Domain            @relation(fields: [domainId], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  createdById String
+  createdBy   User              @relation("RequirementsCreated", fields: [createdById], references: [id])
+  roles       RequirementRole[]
+  revisions   Revision[]
+
+  @@index([domainId])
+  @@map("requirement")
+}
+
+model RequirementRole {
+  requirementId String
+  requirement   Requirement  @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  roleId        String
+  role          BusinessRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([requirementId, roleId])
+  @@map("requirement_role")
+}
+
+model Revision {
+  id            String      @id @default(uuid())
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  type          String      // "baseline" | "change" | "deprecation"
+  content       String
+  releaseId     String?
+  release       Release?    @relation(fields: [releaseId], references: [id])
+  createdAt     DateTime    @default(now())
+  createdById   String
+  createdBy     User        @relation("RevisionsCreated", fields: [createdById], references: [id])
+
+  @@index([requirementId])
+  @@index([releaseId])
+  @@map("revision")
+}
+
+model Release {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  status      String     @default("draft") // "draft" | "published"
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdById String
+  createdBy   User       @relation("ReleasesCreated", fields: [createdById], references: [id])
+  revisions   Revision[]
+
+  @@map("release")
 }

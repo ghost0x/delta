@@ -1,8 +1,17 @@
 'use client';
 
+import * as React from 'react';
+import {
+  IconClipboardText,
+  IconPackage,
+  IconCategory,
+  IconUsers,
+  IconReport,
+  IconInnerShadowTop
+} from '@tabler/icons-react';
+
 import { NavMain } from '@/components/dashboard/layout/nav-main';
-import { NavSecondary } from '@/components/dashboard/layout/nav-secondary';
-import { NavUser } from '@/components/dashboard/layout/nav-user';
+import { NavUser } from '@/components/admin/layout/nav-user';
 import {
   Sidebar,
   SidebarContent,
@@ -14,55 +23,33 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { userType } from '@/types/user';
-import {
-  IconCreditCardFilled,
-  IconDashboard,
-  IconFolderOpen,
-  IconHelp,
-  IconLock,
-  IconMoodPuzzled,
-  IconSettings
-} from '@tabler/icons-react';
-import Image from 'next/image';
 
 const data = {
   navMain: [
     {
-      title: 'Dashboard',
+      title: 'Requirements',
       url: '/dashboard',
-      icon: IconDashboard
+      icon: IconClipboardText
     },
     {
-      title: 'Projects',
-      url: '#',
-      icon: IconFolderOpen
+      title: 'Releases',
+      url: '/dashboard/releases',
+      icon: IconPackage
     },
     {
-      title: 'Billing',
-      url: '#',
-      icon: IconCreditCardFilled
+      title: 'Domains',
+      url: '/dashboard/domains',
+      icon: IconCategory
     },
     {
-      title: 'Settings',
-      url: '#',
-      icon: IconSettings
+      title: 'Roles',
+      url: '/dashboard/roles',
+      icon: IconUsers
     },
     {
-      title: 'Get Help',
-      url: '#',
-      icon: IconHelp
-    }
-  ],
-  navSecondary: [
-    {
-      title: 'Unauthorized',
-      url: '/admin',
-      icon: IconLock
-    },
-    {
-      title: 'Not Found',
-      url: '/non-existent-page',
-      icon: IconMoodPuzzled
+      title: 'Reports',
+      url: '/dashboard/reports',
+      icon: IconReport
     }
   ]
 };
@@ -80,16 +67,9 @@ export function AppSidebar({
               asChild
               className='data-[slot=sidebar-menu-button]:p-1.5!'
             >
-              <Link href='/'>
-                <Image
-                  src='/nextjs.svg'
-                  alt='Logo'
-                  width={32}
-                  height={32}
-                  className='size-8'
-                  priority
-                />
-                <span className='text-base font-semibold'>Dashboard</span>
+              <Link href='/dashboard'>
+                <IconInnerShadowTop className='size-5!' />
+                <span className='text-base font-semibold'>Baseline</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -97,7 +77,6 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavSecondary items={data.navSecondary} className='mt-auto' />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

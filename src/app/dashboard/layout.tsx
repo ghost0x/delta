@@ -1,4 +1,8 @@
+import { AppSidebar } from '@/components/dashboard/layout/app-sidebar';
+import { SiteHeader } from '@/components/dashboard/layout/site-header';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { isAuthenticated } from '@/server/user';
+import { userType } from '@/types/user';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({
@@ -12,5 +16,15 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  return <>{children}</>;
+  const user = session.user;
+
+  return (
+    <SidebarProvider>
+      <AppSidebar variant='inset' user={user as userType} />
+      <SidebarInset>
+        <SiteHeader />
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }
