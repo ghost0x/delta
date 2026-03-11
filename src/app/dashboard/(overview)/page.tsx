@@ -1,38 +1,25 @@
-import { RecentActivity } from '@/components/dashboard/recent-activity';
-import { StatsCards } from '@/components/dashboard/stats-cards';
-import { UpgradeBanner } from '@/components/dashboard/upgrade-banner';
-import { isAuthenticated } from '@/server/user';
-import { redirect } from 'next/navigation';
+'use client';
 
-export default async function DashboardPage() {
-  const session = await isAuthenticated();
+import { logout } from '@/server/user';
+import { useRouter } from 'next/navigation';
 
-  if (!session) {
-    redirect('/login');
-  }
+export default function DashboardPage() {
+  const router = useRouter();
 
-  const user = session.user;
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
-    <div className='mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 p-6 md:p-10'>
-      {/* Welcome Banner */}
-      <div className='flex flex-col gap-2'>
-        <h1 className='text-3xl font-bold tracking-tight md:text-4xl'>
-          Welcome back, {user.name}!
-        </h1>
-        <p className='text-muted-foreground'>
-          Here&apos;s what&apos;s happening with your projects today.
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <StatsCards />
-
-      {/* Recent Activity Section */}
-      <RecentActivity />
-
-      {/* Upgrade Banner */}
-      <UpgradeBanner />
+    <div className='flex min-h-screen flex-col items-center justify-center gap-4'>
+      <h1 className='text-3xl font-bold'>Hi! You&apos;re authenticated</h1>
+      <button
+        onClick={handleLogout}
+        className='text-primary hover:text-primary/80 underline underline-offset-4'
+      >
+        Logout
+      </button>
     </div>
   );
 }
