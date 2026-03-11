@@ -6,7 +6,7 @@ export default async function LoginPage() {
   const session = await isAuthenticated();
 
   if (session) {
-    redirect('/');
+    redirect('/dashboard');
   }
 
   return (
