@@ -1,11 +1,13 @@
 import { generateBaselineReport, exportBaselineMarkdown } from '@/server/reports';
+import { getRoles } from '@/server/roles';
 import { BaselineReportView } from '@/components/reports/baseline-report';
 import { ExportButton } from '@/components/reports/export-button';
 
 export default async function BaselineReportPage() {
-  const [report, markdown] = await Promise.all([
+  const [report, markdown, roles] = await Promise.all([
     generateBaselineReport(),
-    exportBaselineMarkdown()
+    exportBaselineMarkdown(),
+    getRoles()
   ]);
 
   return (
@@ -24,7 +26,7 @@ export default async function BaselineReportPage() {
           <ExportButton content={markdown} filename='system-baseline.md' />
         </div>
         <div className='px-4 lg:px-6'>
-          <BaselineReportView report={report} />
+          <BaselineReportView report={report} totalRoleCount={roles.length} />
         </div>
       </div>
     </div>

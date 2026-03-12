@@ -1,11 +1,12 @@
 import { getRequirements } from '@/server/requirements';
+import { getRoles } from '@/server/roles';
 import { RequirementsTable } from '@/components/requirements/requirements-table';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { IconPlus } from '@tabler/icons-react';
 
 export default async function DashboardPage() {
-  const requirements = await getRequirements();
+  const [requirements, roles] = await Promise.all([getRequirements(), getRoles()]);
 
   return (
     <div className='flex flex-1 flex-col'>
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
           </Button>
         </div>
         <div className='px-4 lg:px-6'>
-          <RequirementsTable requirements={requirements} />
+          <RequirementsTable requirements={requirements} totalRoleCount={roles.length} />
         </div>
       </div>
     </div>

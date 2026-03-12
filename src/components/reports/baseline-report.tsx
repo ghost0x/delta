@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { BaselineReport } from '@/server/reports';
 
-export function BaselineReportView({ report }: { report: BaselineReport }) {
+export function BaselineReportView({ report, totalRoleCount }: { report: BaselineReport; totalRoleCount: number }) {
   const domains = Object.keys(report.items).sort();
 
   if (domains.length === 0) {
@@ -26,11 +26,15 @@ export function BaselineReportView({ report }: { report: BaselineReport }) {
                     <CardTitle className='text-base'>
                       {item.requirementTitle}
                     </CardTitle>
-                    {item.roles.map((role) => (
-                      <Badge key={role} variant='outline'>
-                        {role}
-                      </Badge>
-                    ))}
+                    {totalRoleCount > 0 && item.roles.length >= totalRoleCount ? (
+                      <Badge variant='outline'>All Roles</Badge>
+                    ) : (
+                      item.roles.map((role) => (
+                        <Badge key={role} variant='outline'>
+                          {role}
+                        </Badge>
+                      ))
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className='py-3 pt-0'>

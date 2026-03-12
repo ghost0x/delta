@@ -89,12 +89,13 @@ model Domain {
 }
 
 model BusinessRole {
-  id           String            @id @default(uuid())
-  name         String            @unique
-  isGlobal     Boolean           @default(false)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  requirements RequirementRole[]
+  id            String            @id @default(uuid())
+  name          String            @unique
+  isGlobal      Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  requirements  RequirementRole[]
+  revisionRoles RevisionRole[]
 
   @@map("business_role")
 }
@@ -126,20 +127,32 @@ model RequirementRole {
 }
 
 model Revision {
-  id            String      @id @default(uuid())
+  id            String         @id @default(uuid())
   requirementId String
-  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  type          String      // "baseline" | "change" | "deprecation"
+  requirement   Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  type          String         // "baseline" | "change" | "deprecation"
+  title         String
   content       String
   releaseId     String?
-  release       Release?    @relation(fields: [releaseId], references: [id])
-  createdAt     DateTime    @default(now())
+  release       Release?       @relation(fields: [releaseId], references: [id])
+  createdAt     DateTime       @default(now())
   createdById   String
-  createdBy     User        @relation("RevisionsCreated", fields: [createdById], references: [id])
+  createdBy     User           @relation("RevisionsCreated", fields: [createdById], references: [id])
+  roles         RevisionRole[]
 
   @@index([requirementId])
   @@index([releaseId])
   @@map("revision")
+}
+
+model RevisionRole {
+  revisionId String
+  revision   Revision     @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  roleId     String
+  role       BusinessRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([revisionId, roleId])
+  @@map("revision_role")
 }
 
 model Release {

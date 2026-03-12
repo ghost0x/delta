@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Card,
   CardContent,
@@ -21,31 +20,62 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { RoleSelector } from '@/components/shared/role-selector';
 import { createRequirement } from '@/server/requirements';
 import { toast } from 'sonner';
+import { AiGenerateDialog } from './ai-generate-dialog';
+import type { AiRequirementOutput } from '@/lib/ai/requirement-schema';
 
 type Domain = { id: string; name: string };
 type Role = { id: string; name: string; isGlobal: boolean };
+type Release = { id: string; name: string };
 
 export function RequirementForm({
   domains,
-  roles
+  roles,
+  draftReleases = []
 }: {
   domains: Domain[];
   roles: Role[];
+  draftReleases?: Release[];
 }) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState('');
-  const [allRoles, setAllRoles] = useState(true);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(roles.map((r) => r.id));
   const [content, setContent] = useState('');
+  const [releaseId, setReleaseId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suggestedDomain, setSuggestedDomain] = useState<string | null>(null);
 
-  const toggleRole = (roleId: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
+  const handleAiGenerated = (data: AiRequirementOutput) => {
+    setTitle(data.title);
+    setContent(data.description);
+
+    const matchedDomain = domains.find(
+      (d) => d.name.toLowerCase() === data.domain.name.toLowerCase()
     );
+    if (matchedDomain) {
+      setDomainId(matchedDomain.id);
+      setSuggestedDomain(null);
+    } else {
+      setDomainId('');
+      setSuggestedDomain(data.domain.name);
+    }
+
+    const matchedRoleIds = data.roleNames
+      .map((name) => roles.find((r) => r.name.toLowerCase() === name.toLowerCase()))
+      .filter((r): r is Role => r !== undefined)
+      .map((r) => r.id);
+
+    if (matchedRoleIds.length === roles.length && roles.length > 0) {
+      setSelectedRoleIds(roles.map((r) => r.id));
+    } else if (matchedRoleIds.length > 0) {
+      setSelectedRoleIds(matchedRoleIds);
+    } else {
+      setSelectedRoleIds(roles.map((r) => r.id));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,8 +90,9 @@ export function RequirementForm({
       await createRequirement({
         title,
         domainId,
-        roleIds: allRoles ? roles.map((r) => r.id) : selectedRoles,
-        content
+        roleIds: selectedRoleIds,
+        content,
+        releaseId: releaseId || undefined
       });
       toast.success('Requirement created');
       router.push('/dashboard');
@@ -78,10 +109,19 @@ export function RequirementForm({
     <form onSubmit={handleSubmit}>
       <Card>
         <CardHeader>
-          <CardTitle>New Requirement</CardTitle>
-          <CardDescription>
-            Create a new business rule. Only Title and Domain are required.
-          </CardDescription>
+          <div className='flex items-center justify-between'>
+            <div>
+              <CardTitle>New Requirement</CardTitle>
+              <CardDescription>
+                Create a new business rule. Only Title and Domain are required.
+              </CardDescription>
+            </div>
+            <AiGenerateDialog
+              domains={domains}
+              roles={roles}
+              onGenerated={handleAiGenerated}
+            />
+          </div>
         </CardHeader>
         <CardContent className='space-y-4'>
           <div className='space-y-2'>
@@ -109,7 +149,19 @@ export function RequirementForm({
                 ))}
               </SelectContent>
             </Select>
-            {domains.length === 0 && (
+            {suggestedDomain && (
+              <p className='text-sm text-muted-foreground flex items-center gap-2'>
+                <Badge variant='secondary'>AI Suggested</Badge>
+                <span>
+                  &quot;{suggestedDomain}&quot; — please{' '}
+                  <a href='/dashboard/domains' className='underline'>
+                    create this domain
+                  </a>{' '}
+                  first, then select it.
+                </span>
+              </p>
+            )}
+            {domains.length === 0 && !suggestedDomain && (
               <p className='text-sm text-muted-foreground'>
                 No domains yet.{' '}
                 <a href='/dashboard/domains' className='underline'>
@@ -120,47 +172,11 @@ export function RequirementForm({
             )}
           </div>
 
-          <div className='space-y-2'>
-            <Label>Roles</Label>
-            <div className='flex items-center gap-2'>
-              <Checkbox
-                id='all-roles'
-                checked={allRoles}
-                onCheckedChange={(checked) => setAllRoles(checked === true)}
-              />
-              <Label htmlFor='all-roles' className='text-sm font-normal'>
-                All Roles
-              </Label>
-            </div>
-            {!allRoles && (
-              <>
-                <Label className='text-sm text-muted-foreground'>Select specific roles:</Label>
-                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
-                  {roles.map((role) => (
-                    <div key={role.id} className='flex items-center gap-2'>
-                      <Checkbox
-                        id={`role-${role.id}`}
-                        checked={selectedRoles.includes(role.id)}
-                        onCheckedChange={() => toggleRole(role.id)}
-                      />
-                      <Label htmlFor={`role-${role.id}`} className='text-sm font-normal'>
-                        {role.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {roles.length === 0 && (
-              <p className='text-sm text-muted-foreground'>
-                No roles yet.{' '}
-                <a href='/dashboard/roles' className='underline'>
-                  Create some first
-                </a>
-                .
-              </p>
-            )}
-          </div>
+          <RoleSelector
+            roles={roles}
+            selectedRoleIds={selectedRoleIds}
+            onRoleIdsChange={setSelectedRoleIds}
+          />
 
           <div className='space-y-2'>
             <Label htmlFor='content'>Description (Markdown)</Label>
@@ -172,6 +188,25 @@ export function RequirementForm({
               rows={8}
             />
           </div>
+
+          {draftReleases.length > 0 && (
+            <div className='space-y-2'>
+              <Label>Assign to Release (optional)</Label>
+              <Select value={releaseId} onValueChange={setReleaseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder='Unassigned' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='none'>Unassigned</SelectItem>
+                  {draftReleases.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className='flex gap-2 pt-2'>
             <Button type='submit' disabled={isSubmitting || !title.trim() || !domainId}>

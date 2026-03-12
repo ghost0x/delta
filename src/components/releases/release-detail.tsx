@@ -45,20 +45,20 @@ type ReleaseDetailProps = {
     revisions: {
       id: string;
       type: string;
+      title: string;
       content: string;
       createdAt: Date;
       createdBy: { id: string; name: string };
+      roles: { role: { id: string; name: string; isGlobal: boolean } }[];
       requirement: {
         id: string;
-        title: string;
         domain: { id: string; name: string };
-        roles: { role: { id: string; name: string; isGlobal: boolean } }[];
       };
     }[];
   };
 };
 
-export function ReleaseDetail({ release }: ReleaseDetailProps) {
+export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & { totalRoleCount: number }) {
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -194,6 +194,7 @@ export function ReleaseDetail({ release }: ReleaseDetailProps) {
                   <TableRow>
                     <TableHead>Requirement</TableHead>
                     <TableHead>Domain</TableHead>
+                    <TableHead>Roles</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Author</TableHead>
                     {isDraft && <TableHead></TableHead>}
@@ -207,13 +208,26 @@ export function ReleaseDetail({ release }: ReleaseDetailProps) {
                           href={`/dashboard/requirements/${rev.requirement.id}`}
                           className='font-medium hover:underline'
                         >
-                          {rev.requirement.title}
+                          {rev.title}
                         </Link>
                       </TableCell>
                       <TableCell>
                         <Badge variant='secondary'>
                           {rev.requirement.domain.name}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className='flex gap-1 flex-wrap'>
+                          {totalRoleCount > 0 && rev.roles.length >= totalRoleCount ? (
+                            <Badge variant='outline' className='text-xs'>All Roles</Badge>
+                          ) : (
+                            rev.roles.map((r) => (
+                              <Badge key={r.role.id} variant='outline' className='text-xs'>
+                                {r.role.name}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge

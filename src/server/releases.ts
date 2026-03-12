@@ -26,10 +26,10 @@ export async function getRelease(id: string) {
         include: {
           requirement: {
             include: {
-              domain: true,
-              roles: { include: { role: true } }
+              domain: true
             }
           },
+          roles: { include: { role: true } },
           createdBy: { select: { id: true, name: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -83,22 +83,45 @@ export async function publishRelease(id: string) {
 
   const release = await prisma.release.findUnique({
     where: { id },
-    include: { _count: { select: { revisions: true } } }
+    include: {
+      revisions: {
+        include: { roles: true }
+      }
+    }
   });
 
   if (!release) throw new Error('Release not found');
   if (release.status !== 'draft') throw new Error('Release is already published');
-  if (release._count.revisions === 0) {
+  if (release.revisions.length === 0) {
     throw new Error('Cannot publish a release with no revisions');
   }
 
-  return prisma.release.update({
+  // Publish the release
+  const published = await prisma.release.update({
     where: { id },
     data: {
       status: 'published',
       publishedAt: new Date()
     }
   });
+
+  // Sync each requirement's title and roles from its revision in this release
+  for (const revision of release.revisions) {
+    await prisma.requirementRole.deleteMany({
+      where: { requirementId: revision.requirementId }
+    });
+    await prisma.requirement.update({
+      where: { id: revision.requirementId },
+      data: {
+        title: revision.title,
+        roles: {
+          create: revision.roles.map((r) => ({ roleId: r.roleId }))
+        }
+      }
+    });
+  }
+
+  return published;
 }
 
 export async function deleteRelease(id: string) {

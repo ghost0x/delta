@@ -3,7 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { DeltaReport } from '@/server/reports';
 
-export function DeltaReportView({ report }: { report: DeltaReport }) {
+function rolesChanged(from: string[] | null, to: string[]): boolean {
+  if (!from) return false;
+  const fromSet = new Set(from);
+  const toSet = new Set(to);
+  return fromSet.size !== toSet.size || [...fromSet].some((r) => !toSet.has(r));
+}
+
+export function DeltaReportView({ report, totalRoleCount }: { report: DeltaReport; totalRoleCount: number }) {
   const domains = Object.keys(report.items).sort();
 
   if (domains.length === 0) {
@@ -25,19 +32,43 @@ export function DeltaReportView({ report }: { report: DeltaReport }) {
                 <CardHeader className='py-3'>
                   <div className='flex items-center gap-2'>
                     <CardTitle className='text-base'>
-                      {item.requirementTitle}
+                      {item.toTitle}
                     </CardTitle>
-                    {item.roles.map((role) => (
-                      <Badge key={role} variant='outline'>
-                        {role}
-                      </Badge>
-                    ))}
+                    {totalRoleCount > 0 && item.toRoles.length >= totalRoleCount ? (
+                      <Badge variant='outline'>All Roles</Badge>
+                    ) : (
+                      item.toRoles.map((role) => (
+                        <Badge key={role} variant='outline'>
+                          {role}
+                        </Badge>
+                      ))
+                    )}
                     {item.revisionType === 'deprecation' && (
                       <Badge variant='destructive'>Deprecated</Badge>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent className='py-3 pt-0 space-y-3'>
+                  {item.fromTitle && item.fromTitle !== item.toTitle && (
+                    <div className='text-sm'>
+                      <span className='font-medium text-muted-foreground'>Title changed: </span>
+                      <span className='line-through text-muted-foreground'>{item.fromTitle}</span>
+                      {' → '}
+                      <span className='font-medium'>{item.toTitle}</span>
+                    </div>
+                  )}
+                  {rolesChanged(item.fromRoles, item.toRoles) && (
+                    <div className='text-sm'>
+                      <span className='font-medium text-muted-foreground'>Roles changed: </span>
+                      <span className='text-muted-foreground'>
+                        {item.fromRoles?.join(', ') || 'none'}
+                      </span>
+                      {' → '}
+                      <span className='font-medium'>
+                        {item.toRoles.join(', ') || 'none'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <p className='text-sm font-medium text-muted-foreground mb-1'>
                       From:

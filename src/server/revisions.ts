@@ -3,10 +3,14 @@
 import prisma from '@/lib/prisma';
 import { isAuthenticated } from '@/server/user';
 
+const revisionRolesInclude = { roles: { include: { role: true } } };
+
 export async function createRevision(data: {
   requirementId: string;
   type: 'baseline' | 'change' | 'deprecation';
+  title: string;
   content: string;
+  roleIds: string[];
   releaseId?: string;
 }) {
   const session = await isAuthenticated();
@@ -25,14 +29,19 @@ export async function createRevision(data: {
     data: {
       requirementId: data.requirementId,
       type: data.type,
+      title: data.title,
       content: data.content,
       releaseId: data.releaseId ?? null,
-      createdById: session.user.id
+      createdById: session.user.id,
+      roles: {
+        create: data.roleIds.map((roleId) => ({ roleId }))
+      }
     },
     include: {
       requirement: { select: { id: true, title: true } },
       release: { select: { id: true, name: true, status: true } },
-      createdBy: { select: { id: true, name: true } }
+      createdBy: { select: { id: true, name: true } },
+      ...revisionRolesInclude
     }
   });
 }
@@ -45,7 +54,8 @@ export async function getRevisionHistory(requirementId: string) {
       release: {
         select: { id: true, name: true, status: true, publishedAt: true }
       },
-      createdBy: { select: { id: true, name: true } }
+      createdBy: { select: { id: true, name: true } },
+      ...revisionRolesInclude
     }
   });
 }
@@ -61,7 +71,8 @@ export async function getCurrentBaseline(requirementId: string) {
       release: {
         select: { id: true, name: true, publishedAt: true }
       },
-      createdBy: { select: { id: true, name: true } }
+      createdBy: { select: { id: true, name: true } },
+      ...revisionRolesInclude
     }
   });
 }
@@ -84,6 +95,60 @@ export async function assignRevisionToRelease(
     where: { id: revisionId },
     data: { releaseId }
   });
+}
+
+export async function updateRevision(
+  revisionId: string,
+  data: { content: string; title?: string; roleIds?: string[] }
+) {
+  const session = await isAuthenticated();
+  if (!session) throw new Error('Unauthorized');
+
+  const revision = await prisma.revision.findUnique({
+    where: { id: revisionId },
+    include: { release: true }
+  });
+  if (!revision) throw new Error('Revision not found');
+  if (revision.release?.status === 'published') {
+    throw new Error('Cannot edit revisions in published releases');
+  }
+
+  if (data.roleIds) {
+    await prisma.revisionRole.deleteMany({ where: { revisionId } });
+    await prisma.revisionRole.createMany({
+      data: data.roleIds.map((roleId) => ({ revisionId, roleId }))
+    });
+  }
+
+  return prisma.revision.update({
+    where: { id: revisionId },
+    data: {
+      content: data.content,
+      ...(data.title !== undefined && { title: data.title })
+    },
+    include: {
+      requirement: { select: { id: true, title: true } },
+      release: { select: { id: true, name: true, status: true } },
+      createdBy: { select: { id: true, name: true } },
+      ...revisionRolesInclude
+    }
+  });
+}
+
+export async function deleteRevision(revisionId: string) {
+  const session = await isAuthenticated();
+  if (!session) throw new Error('Unauthorized');
+
+  const revision = await prisma.revision.findUnique({
+    where: { id: revisionId },
+    include: { release: true }
+  });
+  if (!revision) throw new Error('Revision not found');
+  if (revision.release?.status === 'published') {
+    throw new Error('Cannot delete revisions in published releases');
+  }
+
+  return prisma.revision.delete({ where: { id: revisionId } });
 }
 
 export async function unassignRevisionFromRelease(revisionId: string) {

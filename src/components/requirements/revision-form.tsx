@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -18,20 +19,30 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { RoleSelector } from '@/components/shared/role-selector';
 import { createRevision } from '@/server/revisions';
 import { toast } from 'sonner';
 
 type Release = { id: string; name: string; status: string };
+type Role = { id: string; name: string; isGlobal: boolean };
 
 export function RevisionForm({
   requirementId,
-  draftReleases
+  draftReleases,
+  currentTitle,
+  currentRoleIds,
+  roles
 }: {
   requirementId: string;
   draftReleases: Release[];
+  currentTitle: string;
+  currentRoleIds: string[];
+  roles: Role[];
 }) {
   const router = useRouter();
   const [type, setType] = useState<'change' | 'deprecation'>('change');
+  const [title, setTitle] = useState(currentTitle);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(currentRoleIds);
   const [content, setContent] = useState('');
   const [releaseId, setReleaseId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,11 +54,15 @@ export function RevisionForm({
       await createRevision({
         requirementId,
         type,
+        title,
         content,
+        roleIds: selectedRoleIds,
         releaseId: releaseId || undefined
       });
       toast.success('Revision created');
       setContent('');
+      setTitle(currentTitle);
+      setSelectedRoleIds(currentRoleIds);
       setReleaseId('');
       router.refresh();
     } catch (error) {
@@ -78,6 +93,22 @@ export function RevisionForm({
               </SelectContent>
             </Select>
           </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='rev-title'>Title</Label>
+            <Input
+              id='rev-title'
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          <RoleSelector
+            roles={roles}
+            selectedRoleIds={selectedRoleIds}
+            onRoleIdsChange={setSelectedRoleIds}
+            idPrefix='rev-'
+          />
 
           <div className='space-y-2'>
             <Label>Content (Markdown)</Label>

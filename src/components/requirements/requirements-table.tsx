@@ -24,9 +24,11 @@ type RequirementRow = {
 };
 
 export function RequirementsTable({
-  requirements
+  requirements,
+  totalRoleCount
 }: {
   requirements: RequirementRow[];
+  totalRoleCount: number;
 }) {
   if (requirements.length === 0) {
     return (
@@ -67,11 +69,15 @@ export function RequirementsTable({
               </TableCell>
               <TableCell>
                 <div className='flex flex-wrap gap-1'>
-                  {req.roles.map((r) => (
-                    <Badge key={r.role.id} variant='outline'>
-                      {r.role.isGlobal ? 'All Roles' : r.role.name}
-                    </Badge>
-                  ))}
+                  {totalRoleCount > 0 && req.roles.length >= totalRoleCount ? (
+                    <Badge variant='outline'>All Roles</Badge>
+                  ) : (
+                    req.roles.map((r) => (
+                      <Badge key={r.role.id} variant='outline'>
+                        {r.role.name}
+                      </Badge>
+                    ))
+                  )}
                 </div>
               </TableCell>
               <TableCell>

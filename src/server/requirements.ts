@@ -65,7 +65,8 @@ export async function getRequirement(id: string) {
           release: {
             select: { id: true, name: true, status: true, publishedAt: true }
           },
-          createdBy: { select: { id: true, name: true } }
+          createdBy: { select: { id: true, name: true } },
+          roles: { include: { role: true } }
         },
         orderBy: { createdAt: 'desc' }
       }
@@ -90,9 +91,19 @@ export async function createRequirement(data: {
   domainId: string;
   roleIds: string[];
   content: string;
+  releaseId?: string;
 }) {
   const session = await isAuthenticated();
   if (!session) throw new Error('Unauthorized');
+
+  if (data.releaseId) {
+    const release = await prisma.release.findUnique({
+      where: { id: data.releaseId }
+    });
+    if (!release || release.status !== 'draft') {
+      throw new Error('Can only assign to draft releases');
+    }
+  }
 
   return prisma.requirement.create({
     data: {
@@ -105,8 +116,13 @@ export async function createRequirement(data: {
       revisions: {
         create: {
           type: 'baseline',
+          title: data.title.trim(),
           content: data.content,
-          createdById: session.user.id
+          releaseId: data.releaseId ?? null,
+          createdById: session.user.id,
+          roles: {
+            create: data.roleIds.map((roleId) => ({ roleId }))
+          }
         }
       }
     },
@@ -116,6 +132,13 @@ export async function createRequirement(data: {
       revisions: true
     }
   });
+}
+
+export async function deleteRequirement(id: string) {
+  const session = await isAuthenticated();
+  if (!session) throw new Error('Unauthorized');
+
+  await prisma.requirement.delete({ where: { id } });
 }
 
 export async function updateRequirement(

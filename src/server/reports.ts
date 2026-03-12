@@ -10,6 +10,10 @@ interface DeltaReportItem {
   revisionType: string;
   fromContent: string | null;
   toContent: string;
+  fromTitle: string | null;
+  toTitle: string;
+  fromRoles: string[] | null;
+  toRoles: string[];
 }
 
 interface BaselineReportItem {
@@ -42,11 +46,9 @@ export async function generateDeltaReport(
       revisions: {
         include: {
           requirement: {
-            include: {
-              domain: true,
-              roles: { include: { role: true } }
-            }
-          }
+            include: { domain: true }
+          },
+          roles: { include: { role: true } }
         }
       }
     }
@@ -68,7 +70,8 @@ export async function generateDeltaReport(
             : undefined
         }
       },
-      orderBy: { release: { publishedAt: 'desc' } }
+      orderBy: { release: { publishedAt: 'desc' } },
+      include: { roles: { include: { role: true } } }
     });
 
     const domainName = revision.requirement.domain.name;
@@ -76,12 +79,16 @@ export async function generateDeltaReport(
 
     items[domainName].push({
       requirementId: revision.requirementId,
-      requirementTitle: revision.requirement.title,
+      requirementTitle: revision.title,
       domain: domainName,
-      roles: revision.requirement.roles.map((r) => r.role.name),
+      roles: revision.roles.map((r) => r.role.name),
       revisionType: revision.type,
       fromContent: previousBaseline?.content ?? null,
-      toContent: revision.content
+      toContent: revision.content,
+      fromTitle: previousBaseline?.title ?? null,
+      toTitle: revision.title,
+      fromRoles: previousBaseline ? previousBaseline.roles.map((r) => r.role.name) : null,
+      toRoles: revision.roles.map((r) => r.role.name)
     });
   }
 
@@ -93,17 +100,16 @@ export async function generateDeltaReport(
 }
 
 export async function generateBaselineReport(): Promise<BaselineReport> {
-  // Get all requirements with their most recent published revision
   const requirements = await prisma.requirement.findMany({
     include: {
       domain: true,
-      roles: { include: { role: true } },
       revisions: {
         where: { release: { status: 'published' } },
         orderBy: { release: { publishedAt: 'desc' } },
         take: 1,
         include: {
-          release: { select: { name: true, publishedAt: true } }
+          release: { select: { name: true, publishedAt: true } },
+          roles: { include: { role: true } }
         }
       }
     }
@@ -114,7 +120,6 @@ export async function generateBaselineReport(): Promise<BaselineReport> {
   for (const req of requirements) {
     const latestRevision = req.revisions[0];
     if (!latestRevision) continue;
-    // Skip deprecated requirements
     if (latestRevision.type === 'deprecation') continue;
 
     const domainName = req.domain.name;
@@ -122,9 +127,9 @@ export async function generateBaselineReport(): Promise<BaselineReport> {
 
     items[domainName].push({
       requirementId: req.id,
-      requirementTitle: req.title,
+      requirementTitle: latestRevision.title,
       domain: domainName,
-      roles: req.roles.map((r) => r.role.name),
+      roles: latestRevision.roles.map((r) => r.role.name),
       content: latestRevision.content,
       publishedAt: latestRevision.release!.publishedAt!,
       releaseName: latestRevision.release!.name
@@ -152,13 +157,28 @@ export async function exportDeltaMarkdown(releaseId: string): Promise<string> {
     lines.push('');
 
     for (const item of report.items[domain]) {
-      const rolesStr = item.roles.length > 0 ? ` (${item.roles.join(', ')})` : '';
-      lines.push(`### ${item.requirementTitle}${rolesStr}`);
+      const rolesStr = item.toRoles.length > 0 ? ` (${item.toRoles.join(', ')})` : '';
+      lines.push(`### ${item.toTitle}${rolesStr}`);
       lines.push('');
 
       if (item.revisionType === 'deprecation') {
         lines.push('**Status:** DEPRECATED');
         lines.push('');
+      }
+
+      if (item.fromTitle && item.fromTitle !== item.toTitle) {
+        lines.push(`**Title changed:** ${item.fromTitle} → ${item.toTitle}`);
+        lines.push('');
+      }
+
+      if (item.fromRoles) {
+        const fromSet = new Set(item.fromRoles);
+        const toSet = new Set(item.toRoles);
+        const rolesChanged = fromSet.size !== toSet.size || [...fromSet].some((r) => !toSet.has(r));
+        if (rolesChanged) {
+          lines.push(`**Roles changed:** ${item.fromRoles.join(', ') || 'none'} → ${item.toRoles.join(', ') || 'none'}`);
+          lines.push('');
+        }
       }
 
       if (item.fromContent) {

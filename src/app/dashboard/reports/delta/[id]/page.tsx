@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { generateDeltaReport, exportDeltaMarkdown } from '@/server/reports';
+import { getRoles } from '@/server/roles';
 import { DeltaReportView } from '@/components/reports/delta-report';
 import { ExportButton } from '@/components/reports/export-button';
 
@@ -12,10 +13,12 @@ export default async function DeltaReportPage({
 
   let report;
   let markdown;
+  let roles;
   try {
-    [report, markdown] = await Promise.all([
+    [report, markdown, roles] = await Promise.all([
       generateDeltaReport(id),
-      exportDeltaMarkdown(id)
+      exportDeltaMarkdown(id),
+      getRoles()
     ]);
   } catch {
     notFound();
@@ -41,7 +44,7 @@ export default async function DeltaReportPage({
           />
         </div>
         <div className='px-4 lg:px-6'>
-          <DeltaReportView report={report} />
+          <DeltaReportView report={report} totalRoleCount={roles.length} />
         </div>
       </div>
     </div>
