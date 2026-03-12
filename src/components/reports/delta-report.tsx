@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import type { DeltaReport } from '@/server/reports';
+import { DiffView } from './diff-view';
 
 function rolesChanged(from: string[] | null, to: string[]): boolean {
   if (!from) return false;
@@ -69,27 +69,7 @@ export function DeltaReportView({ report, totalRoleCount }: { report: DeltaRepor
                       </span>
                     </div>
                   )}
-                  <div>
-                    <p className='text-sm font-medium text-muted-foreground mb-1'>
-                      From:
-                    </p>
-                    <div className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap bg-muted/50 rounded-md p-3'>
-                      {item.fromContent ?? (
-                        <span className='italic text-muted-foreground'>
-                          New requirement
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className='text-sm font-medium text-muted-foreground mb-1'>
-                      To:
-                    </p>
-                    <div className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap bg-muted/50 rounded-md p-3'>
-                      {item.toContent}
-                    </div>
-                  </div>
+                  <DiffView fromContent={item.fromContent} toContent={item.toContent} />
                 </CardContent>
               </Card>
             ))}

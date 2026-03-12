@@ -1,17 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RoleSelector } from '@/components/shared/role-selector';
-import { updateRevision, deleteRevision } from '@/server/revisions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  deleteRevision,
+  assignRevisionToRelease,
+  unassignRevisionFromRelease,
+  assignRevisionToBaseline
+} from '@/server/revisions';
 import { toast } from 'sonner';
 
+type Release = { id: string; name: string; status: string };
 type Role = { id: string; name: string; isGlobal: boolean };
 
 type Revision = {
@@ -38,39 +47,80 @@ function RevisionTypeBadge({ type }: { type: string }) {
   }
 }
 
+function isPublished(revision: Revision) {
+  return revision.release?.status === 'published';
+}
+
 function isDraft(revision: Revision) {
   return !revision.release || revision.release.status === 'draft';
 }
 
-function RevisionCard({ revision, allRoles }: { revision: Revision; allRoles: Role[] }) {
+function ReleaseSelector({
+  revision,
+  draftReleases
+}: {
+  revision: Revision;
+  draftReleases: Release[];
+}) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(revision.title);
-  const [content, setContent] = useState(revision.content);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(
-    revision.roles.map((r) => r.role.id)
-  );
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const draft = isDraft(revision);
+  const [assigning, setAssigning] = useState(false);
 
-  const handleSave = async () => {
+  const currentValue = revision.release?.id ?? 'unassigned';
+
+  const handleChange = async (value: string) => {
     try {
-      setSaving(true);
-      await updateRevision(revision.id, {
-        content,
-        title,
-        roleIds: selectedRoleIds
-      });
-      toast.success('Revision updated');
-      setEditing(false);
+      setAssigning(true);
+      if (value === 'baseline') {
+        await assignRevisionToBaseline(revision.id);
+        toast.success('Revision assigned to Baseline');
+      } else if (value === 'unassigned') {
+        await unassignRevisionFromRelease(revision.id);
+        toast.success('Revision unassigned from release');
+      } else {
+        await assignRevisionToRelease(revision.id, value);
+        toast.success('Revision assigned to release');
+      }
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update revision');
+      toast.error(error instanceof Error ? error.message : 'Failed to assign release');
     } finally {
-      setSaving(false);
+      setAssigning(false);
     }
   };
+
+  return (
+    <Select value={currentValue} onValueChange={handleChange} disabled={assigning}>
+      <SelectTrigger className='h-7 w-[160px] text-xs'>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value='unassigned'>Unassigned</SelectItem>
+        <SelectItem value='baseline'>Baseline</SelectItem>
+        {draftReleases.map((r) => (
+          <SelectItem key={r.id} value={r.id}>
+            {r.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function RevisionCard({
+  revision,
+  allRoles,
+  draftReleases,
+  onEdit
+}: {
+  revision: Revision;
+  allRoles: Role[];
+  draftReleases: Release[];
+  onEdit: (revision: Revision) => void;
+}) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const draft = isDraft(revision);
+  const published = isPublished(revision);
 
   const handleDelete = async () => {
     try {
@@ -85,31 +135,24 @@ function RevisionCard({ revision, allRoles }: { revision: Revision; allRoles: Ro
     }
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-    setTitle(revision.title);
-    setContent(revision.content);
-    setSelectedRoleIds(revision.roles.map((r) => r.role.id));
-  };
-
   return (
     <Card>
       <CardHeader className='py-3'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <RevisionTypeBadge type={revision.type} />
-            {revision.release ? (
-              <Badge variant={revision.release.status === 'published' ? 'default' : 'secondary'}>
-                {revision.release.name} ({revision.release.status})
+            {published ? (
+              <Badge variant='default'>
+                {revision.release!.name} (published)
               </Badge>
             ) : (
-              <Badge variant='outline'>Unassigned</Badge>
+              <ReleaseSelector revision={revision} draftReleases={draftReleases} />
             )}
           </div>
           <div className='flex items-center gap-2'>
-            {draft && !editing && (
+            {draft && (
               <>
-                <Button variant='ghost' size='sm' onClick={() => setEditing(true)}>
+                <Button variant='ghost' size='sm' onClick={() => onEdit(revision)}>
                   Edit
                 </Button>
                 <Button variant='ghost' size='sm' onClick={handleDelete} disabled={deleting}>
@@ -125,58 +168,23 @@ function RevisionCard({ revision, allRoles }: { revision: Revision; allRoles: Ro
         </div>
       </CardHeader>
       <CardContent className='py-3 pt-0'>
-        {editing ? (
-          <div className='space-y-3'>
-            <div className='space-y-2'>
-              <Label htmlFor={`edit-title-${revision.id}`}>Title</Label>
-              <Input
-                id={`edit-title-${revision.id}`}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <RoleSelector
-              roles={allRoles}
-              selectedRoleIds={selectedRoleIds}
-              onRoleIdsChange={setSelectedRoleIds}
-              idPrefix={`edit-${revision.id}-`}
-            />
-            <div className='space-y-2'>
-              <Label>Content</Label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={6}
-              />
-            </div>
-            <div className='flex gap-2'>
-              <Button size='sm' onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
-              <Button size='sm' variant='outline' onClick={handleCancel}>
-                Cancel
-              </Button>
-            </div>
+        <div className='space-y-2'>
+          <div className='flex items-center gap-2 flex-wrap'>
+            <span className='text-sm font-medium'>{revision.title}</span>
+            {allRoles.length > 0 && revision.roles.length >= allRoles.length ? (
+              <Badge variant='outline' className='text-xs'>All Roles</Badge>
+            ) : (
+              revision.roles.map((r) => (
+                <Badge key={r.role.id} variant='outline' className='text-xs'>
+                  {r.role.name}
+                </Badge>
+              ))
+            )}
           </div>
-        ) : (
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2 flex-wrap'>
-              <span className='text-sm font-medium'>{revision.title}</span>
-              {allRoles.length > 0 && revision.roles.length >= allRoles.length ? (
-                <Badge variant='outline' className='text-xs'>All Roles</Badge>
-              ) : (
-                revision.roles.map((r) => (
-                  <Badge key={r.role.id} variant='outline' className='text-xs'>
-                    {r.role.name}
-                  </Badge>
-                ))
-              )}
-            </div>
-            <div className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap'>
-              {revision.content || <span className='text-muted-foreground italic'>No content</span>}
-            </div>
+          <div className='prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap'>
+            {revision.content || <span className='text-muted-foreground italic'>No content</span>}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -184,10 +192,14 @@ function RevisionCard({ revision, allRoles }: { revision: Revision; allRoles: Ro
 
 export function RevisionTimeline({
   revisions,
-  roles
+  roles,
+  draftReleases,
+  onEdit
 }: {
   revisions: Revision[];
   roles: Role[];
+  draftReleases: Release[];
+  onEdit: (revision: Revision) => void;
 }) {
   if (revisions.length === 0) {
     return (
@@ -198,7 +210,13 @@ export function RevisionTimeline({
   return (
     <div className='space-y-4'>
       {revisions.map((revision) => (
-        <RevisionCard key={revision.id} revision={revision} allRoles={roles} />
+        <RevisionCard
+          key={revision.id}
+          revision={revision}
+          allRoles={roles}
+          draftReleases={draftReleases}
+          onEdit={onEdit}
+        />
       ))}
     </div>
   );

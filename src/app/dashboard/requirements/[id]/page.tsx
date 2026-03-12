@@ -3,11 +3,10 @@ import { getRequirement } from '@/server/requirements';
 import { getReleases } from '@/server/releases';
 import { getDomains } from '@/server/domains';
 import { getRoles } from '@/server/roles';
-import { RevisionTimeline } from '@/components/requirements/revision-timeline';
-import { RevisionForm } from '@/components/requirements/revision-form';
 import { RequirementHeader } from '@/components/requirements/requirement-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { RequirementDetailClient } from './detail-client';
 
 export default async function RequirementDetailPage({
   params
@@ -36,7 +35,11 @@ export default async function RequirementDetailPage({
     (r) => !r.release || r.release.status === 'draft'
   );
 
-  const currentRoleIds = requirement.roles.map((r) => r.role.id);
+  const baselineRoles = requirement.currentBaseline
+    ? (requirement.currentBaseline as { roles: { role: { id: string; name: string; isGlobal: boolean } }[] }).roles ?? []
+    : requirement.roles;
+
+  const currentRoleIds = baselineRoles.map((r: { role: { id: string } }) => r.role.id);
 
   return (
     <div className='flex flex-1 flex-col'>
@@ -47,7 +50,6 @@ export default async function RequirementDetailPage({
               id: requirement.id,
               title: requirement.title,
               domain: requirement.domain,
-              roles: requirement.roles,
               createdBy: requirement.createdBy,
               createdAt: requirement.createdAt,
               isDeprecated: requirement.isDeprecated ?? false,
@@ -56,6 +58,7 @@ export default async function RequirementDetailPage({
             }}
             domains={domains.map((d) => ({ id: d.id, name: d.name }))}
             roles={rolesList}
+            baselineRoles={baselineRoles}
           />
         </div>
 
@@ -78,20 +81,16 @@ export default async function RequirementDetailPage({
           <Separator />
         </div>
 
-        <div className='grid grid-cols-1 gap-6 px-4 lg:grid-cols-2 lg:px-6'>
-          <div>
-            <h2 className='text-lg font-semibold mb-4'>Revision History</h2>
-            <RevisionTimeline revisions={requirement.revisions} roles={rolesList} />
-          </div>
-          <div>
-            <RevisionForm
-              requirementId={requirement.id}
-              draftReleases={draftReleases}
-              currentTitle={requirement.title}
-              currentRoleIds={currentRoleIds}
-              roles={rolesList}
-            />
-          </div>
+        <div className='px-4 lg:px-6'>
+          <RequirementDetailClient
+            requirementId={requirement.id}
+            revisions={requirement.revisions}
+            draftReleases={draftReleases}
+            currentTitle={requirement.title}
+            currentContent={requirement.currentBaseline?.content ?? ''}
+            currentRoleIds={currentRoleIds}
+            roles={rolesList}
+          />
         </div>
       </div>
     </div>

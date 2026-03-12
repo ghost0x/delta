@@ -143,7 +143,7 @@ export async function deleteRequirement(id: string) {
 
 export async function updateRequirement(
   id: string,
-  data: { title?: string; domainId?: string; roleIds?: string[] }
+  data: { title?: string; domainId?: string }
 ) {
   const session = await isAuthenticated();
   if (!session) throw new Error('Unauthorized');
@@ -152,19 +152,11 @@ export async function updateRequirement(
   if (data.title) updateData.title = data.title.trim();
   if (data.domainId) updateData.domainId = data.domainId;
 
-  if (data.roleIds) {
-    await prisma.requirementRole.deleteMany({ where: { requirementId: id } });
-    await prisma.requirementRole.createMany({
-      data: data.roleIds.map((roleId) => ({ requirementId: id, roleId }))
-    });
-  }
-
   return prisma.requirement.update({
     where: { id },
     data: updateData,
     include: {
-      domain: true,
-      roles: { include: { role: true } }
+      domain: true
     }
   });
 }

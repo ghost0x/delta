@@ -6,7 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { IconFileText, IconHistory } from '@tabler/icons-react';
 
 export default async function ReportsPage() {
-  const releases = await getReleases({ status: 'published' });
+  const allReleases = await getReleases();
+  const releases = allReleases.filter((r) => r.name !== 'Baseline');
+
+  const draftReleases = releases.filter((r) => r.status === 'draft');
+  const publishedReleases = releases.filter((r) => r.status === 'published');
 
   return (
     <div className='flex flex-1 flex-col'>
@@ -51,11 +55,27 @@ export default async function ReportsPage() {
             <CardContent>
               {releases.length === 0 ? (
                 <p className='text-muted-foreground text-sm'>
-                  No published releases yet.
+                  No releases yet.
                 </p>
               ) : (
                 <div className='space-y-2'>
-                  {releases.map((r) => (
+                  {draftReleases.map((r) => (
+                    <div key={r.id} className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-sm font-medium'>{r.name}</span>
+                        <Badge variant='outline'>
+                          {r._count.revisions} changes
+                        </Badge>
+                        <Badge variant='secondary'>Draft</Badge>
+                      </div>
+                      <Button asChild variant='outline' size='sm'>
+                        <Link href={`/dashboard/reports/delta/${r.id}`}>
+                          Preview
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
+                  {publishedReleases.map((r) => (
                     <div key={r.id} className='flex items-center justify-between'>
                       <div className='flex items-center gap-2'>
                         <span className='text-sm font-medium'>{r.name}</span>

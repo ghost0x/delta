@@ -151,6 +151,42 @@ export async function deleteRevision(revisionId: string) {
   return prisma.revision.delete({ where: { id: revisionId } });
 }
 
+export async function assignRevisionToBaseline(revisionId: string) {
+  const session = await isAuthenticated();
+  if (!session) throw new Error('Unauthorized');
+
+  const { getOrCreateBaselineRelease } = await import('@/server/releases');
+  const baseline = await getOrCreateBaselineRelease();
+
+  const revision = await prisma.revision.findUnique({
+    where: { id: revisionId },
+    include: { release: true, roles: true }
+  });
+  if (!revision) throw new Error('Revision not found');
+  if (revision.release?.status === 'published') {
+    throw new Error('Revision is already in a published release');
+  }
+
+  await prisma.revision.update({
+    where: { id: revisionId },
+    data: { releaseId: baseline.id }
+  });
+
+  // Sync requirement title and roles from this revision (same as publishRelease)
+  await prisma.requirementRole.deleteMany({
+    where: { requirementId: revision.requirementId }
+  });
+  await prisma.requirement.update({
+    where: { id: revision.requirementId },
+    data: {
+      title: revision.title,
+      roles: {
+        create: revision.roles.map((r) => ({ roleId: r.roleId }))
+      }
+    }
+  });
+}
+
 export async function unassignRevisionFromRelease(revisionId: string) {
   const session = await isAuthenticated();
   if (!session) throw new Error('Unauthorized');

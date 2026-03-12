@@ -124,6 +124,26 @@ export async function publishRelease(id: string) {
   return published;
 }
 
+export async function getOrCreateBaselineRelease() {
+  const session = await isAuthenticated();
+  if (!session) throw new Error('Unauthorized');
+
+  const existing = await prisma.release.findFirst({
+    where: { name: 'Baseline', status: 'published' }
+  });
+  if (existing) return existing;
+
+  return prisma.release.create({
+    data: {
+      name: 'Baseline',
+      description: 'Pre-existing requirements baseline',
+      status: 'published',
+      publishedAt: new Date(0),
+      createdById: session.user.id
+    }
+  });
+}
+
 export async function deleteRelease(id: string) {
   const session = await isAuthenticated();
   if (!session) throw new Error('Unauthorized');
