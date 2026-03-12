@@ -37,6 +37,7 @@ export function RequirementForm({
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState('');
+  const [allRoles, setAllRoles] = useState(true);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,7 +60,7 @@ export function RequirementForm({
       await createRequirement({
         title,
         domainId,
-        roleIds: selectedRoles,
+        roleIds: allRoles ? roles.map((r) => r.id) : selectedRoles,
         content
       });
       toast.success('Requirement created');
@@ -121,20 +122,35 @@ export function RequirementForm({
 
           <div className='space-y-2'>
             <Label>Roles</Label>
-            <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
-              {roles.map((role) => (
-                <div key={role.id} className='flex items-center gap-2'>
-                  <Checkbox
-                    id={`role-${role.id}`}
-                    checked={selectedRoles.includes(role.id)}
-                    onCheckedChange={() => toggleRole(role.id)}
-                  />
-                  <Label htmlFor={`role-${role.id}`} className='text-sm font-normal'>
-                    {role.isGlobal ? `${role.name} (All)` : role.name}
-                  </Label>
-                </div>
-              ))}
+            <div className='flex items-center gap-2'>
+              <Checkbox
+                id='all-roles'
+                checked={allRoles}
+                onCheckedChange={(checked) => setAllRoles(checked === true)}
+              />
+              <Label htmlFor='all-roles' className='text-sm font-normal'>
+                All Roles
+              </Label>
             </div>
+            {!allRoles && (
+              <>
+                <Label className='text-sm text-muted-foreground'>Select specific roles:</Label>
+                <div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
+                  {roles.map((role) => (
+                    <div key={role.id} className='flex items-center gap-2'>
+                      <Checkbox
+                        id={`role-${role.id}`}
+                        checked={selectedRoles.includes(role.id)}
+                        onCheckedChange={() => toggleRole(role.id)}
+                      />
+                      <Label htmlFor={`role-${role.id}`} className='text-sm font-normal'>
+                        {role.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             {roles.length === 0 && (
               <p className='text-sm text-muted-foreground'>
                 No roles yet.{' '}
