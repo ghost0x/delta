@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import type { AiRevisionOutput } from '@/lib/ai/revision-schema';
 
 type Release = { id: string; name: string; status: string };
-type Role = { id: string; name: string; isGlobal: boolean };
+type Role = { id: string; name: string };
 
 type Revision = {
   id: string;
@@ -35,7 +35,7 @@ type Revision = {
   title: string;
   content: string;
   release: { id: string; name: string; status: string; publishedAt: Date | null } | null;
-  roles: { role: { id: string; name: string; isGlobal: boolean } }[];
+  roles: { role: { id: string; name: string } }[];
 };
 
 export function RevisionFormSheet({

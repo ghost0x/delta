@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +27,9 @@ import { toast } from 'sonner';
 import { AiGenerateDialog } from './ai-generate-dialog';
 import type { AiRequirementOutput } from '@/lib/ai/requirement-schema';
 
-type Domain = { id: string; name: string };
-type Role = { id: string; name: string; isGlobal: boolean };
+type Category = { id: string; name: string; description: string | null; domainId: string };
+type Domain = { id: string; name: string; description: string | null; categories: Category[] };
+type Role = { id: string; name: string; description: string | null };
 type Release = { id: string; name: string };
 
 export function RequirementForm({
@@ -43,11 +44,22 @@ export function RequirementForm({
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(roles.map((r) => r.id));
   const [content, setContent] = useState('');
   const [releaseId, setReleaseId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestedDomain, setSuggestedDomain] = useState<string | null>(null);
+
+  const domainCategories = useMemo(() => {
+    const domain = domains.find((d) => d.id === domainId);
+    return domain?.categories ?? [];
+  }, [domains, domainId]);
+
+  const handleDomainChange = (newDomainId: string) => {
+    setDomainId(newDomainId);
+    setCategoryId('');
+  };
 
   const handleAiGenerated = (data: AiRequirementOutput) => {
     setTitle(data.title);
@@ -59,8 +71,20 @@ export function RequirementForm({
     if (matchedDomain) {
       setDomainId(matchedDomain.id);
       setSuggestedDomain(null);
+
+      if (data.category) {
+        const matchedCategory = matchedDomain.categories.find(
+          (c) => c.name.toLowerCase() === data.category!.name.toLowerCase()
+        );
+        if (matchedCategory) {
+          setCategoryId(matchedCategory.id);
+        } else {
+          setCategoryId('');
+        }
+      }
     } else {
       setDomainId('');
+      setCategoryId('');
       setSuggestedDomain(data.domain.name);
     }
 
@@ -80,8 +104,8 @@ export function RequirementForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !domainId) {
-      toast.error('Title and Domain are required');
+    if (!title.trim() || !domainId || !categoryId) {
+      toast.error('Title, Domain, and Category are required');
       return;
     }
 
@@ -90,6 +114,7 @@ export function RequirementForm({
       await createRequirement({
         title,
         domainId,
+        categoryId,
         roleIds: selectedRoleIds,
         content,
         releaseId: releaseId || undefined
@@ -113,7 +138,7 @@ export function RequirementForm({
             <div>
               <CardTitle>New Requirement</CardTitle>
               <CardDescription>
-                Create a new business rule. Only Title and Domain are required.
+                Create a new business rule. Title, Domain, and Category are required.
               </CardDescription>
             </div>
             <AiGenerateDialog
@@ -135,41 +160,72 @@ export function RequirementForm({
             />
           </div>
 
-          <div className='space-y-2'>
-            <Label htmlFor='domain'>Domain *</Label>
-            <Select value={domainId} onValueChange={setDomainId}>
-              <SelectTrigger>
-                <SelectValue placeholder='Select a domain' />
-              </SelectTrigger>
-              <SelectContent>
-                {domains.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {suggestedDomain && (
-              <p className='text-sm text-muted-foreground flex items-center gap-2'>
-                <Badge variant='secondary'>AI Suggested</Badge>
-                <span>
-                  &quot;{suggestedDomain}&quot; — please{' '}
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='domain'>Domain *</Label>
+              <Select value={domainId} onValueChange={handleDomainChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder='Select a domain' />
+                </SelectTrigger>
+                <SelectContent>
+                  {domains.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {suggestedDomain && (
+                <p className='text-sm text-muted-foreground flex items-center gap-2'>
+                  <Badge variant='secondary'>AI Suggested</Badge>
+                  <span>
+                    &quot;{suggestedDomain}&quot; — please{' '}
+                    <a href='/dashboard/domains' className='underline'>
+                      create this domain
+                    </a>{' '}
+                    first, then select it.
+                  </span>
+                </p>
+              )}
+              {domains.length === 0 && !suggestedDomain && (
+                <p className='text-sm text-muted-foreground'>
+                  No domains yet.{' '}
                   <a href='/dashboard/domains' className='underline'>
-                    create this domain
-                  </a>{' '}
-                  first, then select it.
-                </span>
-              </p>
-            )}
-            {domains.length === 0 && !suggestedDomain && (
-              <p className='text-sm text-muted-foreground'>
-                No domains yet.{' '}
-                <a href='/dashboard/domains' className='underline'>
-                  Create one first
-                </a>
-                .
-              </p>
-            )}
+                    Create one first
+                  </a>
+                  .
+                </p>
+              )}
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='category'>Category *</Label>
+              <Select
+                value={categoryId}
+                onValueChange={setCategoryId}
+                disabled={!domainId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={domainId ? 'Select a category' : 'Select a domain first'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {domainCategories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {domainId && domainCategories.length === 0 && (
+                <p className='text-sm text-muted-foreground'>
+                  No categories for this domain.{' '}
+                  <a href='/dashboard/domains' className='underline'>
+                    Create one first
+                  </a>
+                  .
+                </p>
+              )}
+            </div>
           </div>
 
           <RoleSelector
@@ -209,7 +265,7 @@ export function RequirementForm({
           )}
 
           <div className='flex gap-2 pt-2'>
-            <Button type='submit' disabled={isSubmitting || !title.trim() || !domainId}>
+            <Button type='submit' disabled={isSubmitting || !title.trim() || !domainId || !categoryId}>
               {isSubmitting ? 'Creating...' : 'Create Requirement'}
             </Button>
             <Button type='button' variant='outline' onClick={() => router.back()}>

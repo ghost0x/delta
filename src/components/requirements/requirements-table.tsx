@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { StatusBadge } from '@/components/requirements/status-badge';
+import { StatusBadge, VerificationBadge } from '@/components/requirements/status-badge';
 import {
   Table,
   TableBody,
@@ -15,8 +15,10 @@ import {
 type RequirementRow = {
   id: string;
   title: string;
+  status: string;
   domain: { id: string; name: string };
-  roles: { role: { id: string; name: string; isGlobal: boolean } }[];
+  category: { id: string; name: string };
+  roles: { role: { id: string; name: string } }[];
   currentBaseline: { content: string; type: string } | null;
   hasDraft: boolean;
   isDeprecated: boolean;
@@ -48,8 +50,10 @@ export function RequirementsTable({
           <TableRow>
             <TableHead>Title</TableHead>
             <TableHead>Domain</TableHead>
+            <TableHead>Category</TableHead>
             <TableHead>Roles</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Verification</TableHead>
             <TableHead>Updated</TableHead>
           </TableRow>
         </TableHeader>
@@ -66,6 +70,9 @@ export function RequirementsTable({
               </TableCell>
               <TableCell>
                 <Badge variant='secondary'>{req.domain.name}</Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant='outline'>{req.category.name}</Badge>
               </TableCell>
               <TableCell>
                 <div className='flex flex-wrap gap-1'>
@@ -86,6 +93,9 @@ export function RequirementsTable({
                   hasDraft={req.hasDraft}
                   hasBaseline={!!req.currentBaseline}
                 />
+              </TableCell>
+              <TableCell>
+                <VerificationBadge status={req.status} />
               </TableCell>
               <TableCell className='text-muted-foreground text-sm'>
                 {new Date(req.updatedAt).toLocaleDateString()}

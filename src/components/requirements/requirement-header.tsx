@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { StatusBadge } from '@/components/requirements/status-badge';
+import { StatusBadge, VerificationBadge } from '@/components/requirements/status-badge';
 import { updateRequirement, deleteRequirement } from '@/server/requirements';
 import { toast } from 'sonner';
 
-type Domain = { id: string; name: string };
-type Role = { id: string; name: string; isGlobal: boolean };
+type Category = { id: string; name: string; domainId: string };
+type Domain = { id: string; name: string; categories: Category[] };
+type Role = { id: string; name: string };
 
 export function RequirementHeader({
   requirement,
@@ -27,8 +28,9 @@ export function RequirementHeader({
   requirement: {
     id: string;
     title: string;
+    status: string;
     domain: { id: string; name: string };
-    createdBy: { name: string };
+    category: { id: string; name: string };
     createdAt: Date;
     isDeprecated: boolean;
     hasDraft: boolean;
@@ -36,7 +38,7 @@ export function RequirementHeader({
   };
   domains: Domain[];
   roles: Role[];
-  baselineRoles: { role: { id: string; name: string; isGlobal: boolean } }[];
+  baselineRoles: { role: { id: string; name: string } }[];
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -48,6 +50,12 @@ export function RequirementHeader({
 
   // Inline domain editing
   const [editingDomain, setEditingDomain] = useState(false);
+
+  // Inline category editing
+  const [editingCategory, setEditingCategory] = useState(false);
+
+  const currentDomain = domains.find((d) => d.id === requirement.domain.id);
+  const domainCategories = useMemo(() => currentDomain?.categories ?? [], [currentDomain]);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -109,6 +117,22 @@ export function RequirementHeader({
     }
   }
 
+  async function saveCategory(categoryId: string) {
+    if (categoryId === requirement.category.id) {
+      setEditingCategory(false);
+      return;
+    }
+    try {
+      await updateRequirement(requirement.id, { categoryId });
+      toast.success('Category updated');
+      setEditingCategory(false);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update category');
+      setEditingCategory(false);
+    }
+  }
+
   const displayRoles = baselineRoles.length > 0 ? baselineRoles : [];
 
   return (
@@ -165,6 +189,32 @@ export function RequirementHeader({
               {requirement.domain.name}
             </Badge>
           )}
+          {editingCategory ? (
+            <Select
+              defaultValue={requirement.category.id}
+              onValueChange={(v) => saveCategory(v)}
+            >
+              <SelectTrigger className='w-auto h-7 text-xs'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {domainCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Badge
+              variant='outline'
+              className='cursor-pointer hover:bg-accent transition-colors'
+              onClick={() => setEditingCategory(true)}
+              title='Click to change category'
+            >
+              {requirement.category.name}
+            </Badge>
+          )}
           {roles.length > 0 && displayRoles.length >= roles.length ? (
             <Badge variant='outline'>All Roles</Badge>
           ) : (
@@ -179,10 +229,25 @@ export function RequirementHeader({
             hasDraft={requirement.hasDraft}
             hasBaseline={requirement.hasBaseline}
           />
+          <button
+            onClick={async () => {
+              const newStatus = requirement.status === 'verified' ? 'unverified' : 'verified';
+              try {
+                await updateRequirement(requirement.id, { status: newStatus });
+                toast.success(`Status changed to ${newStatus}`);
+                router.refresh();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Failed to update status');
+              }
+            }}
+            title='Click to toggle verification status'
+            className='cursor-pointer'
+          >
+            <VerificationBadge status={requirement.status} />
+          </button>
         </div>
         <p className='text-muted-foreground text-sm mt-1'>
-          Created by {requirement.createdBy.name} on{' '}
-          {new Date(requirement.createdAt).toLocaleDateString()}
+          Created {new Date(requirement.createdAt).toLocaleDateString()}
         </p>
       </div>
       <div className='flex gap-2'>

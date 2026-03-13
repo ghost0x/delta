@@ -3,7 +3,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
-type Role = { id: string; name: string; isGlobal: boolean };
+type Role = { id: string; name: string };
 
 interface RoleSelectorProps {
   roles: Role[];

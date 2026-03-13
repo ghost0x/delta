@@ -6,6 +6,10 @@ export const aiRequirementSchema = z.object({
     name: z.string(),
     isNew: z.boolean(),
   }),
+  category: z.object({
+    name: z.string(),
+    isNew: z.boolean(),
+  }),
   roleNames: z.array(z.string()),
   description: z.string(),
 });

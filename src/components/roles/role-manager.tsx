@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -11,9 +12,15 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { IconPencil, IconTrash, IconPlus, IconCheck, IconX } from '@tabler/icons-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet';
+import { IconPencil, IconTrash, IconPlus } from '@tabler/icons-react';
 import { createRole, updateRole, deleteRole } from '@/server/roles';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -21,7 +28,7 @@ import { useRouter } from 'next/navigation';
 type Role = {
   id: string;
   name: string;
-  isGlobal: boolean;
+  description: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count: { requirements: number };
@@ -29,37 +36,49 @@ type Role = {
 
 export function RoleManager({ roles }: { roles: Role[] }) {
   const router = useRouter();
-  const [newName, setNewName] = useState('');
-  const [newIsGlobal, setNewIsGlobal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    try {
-      setIsCreating(true);
-      await createRole({ name: newName, isGlobal: newIsGlobal });
-      setNewName('');
-      setNewIsGlobal(false);
-      toast.success('Role created');
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create role');
-    } finally {
-      setIsCreating(false);
-    }
+  const openCreate = () => {
+    setEditingRole(null);
+    setFormName('');
+    setFormDescription('');
+    setSheetOpen(true);
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!editName.trim()) return;
+  const openEdit = (role: Role) => {
+    setEditingRole(role);
+    setFormName(role.name);
+    setFormDescription(role.description ?? '');
+    setSheetOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) return;
     try {
-      await updateRole(id, { name: editName });
-      setEditingId(null);
-      toast.success('Role updated');
+      setIsSaving(true);
+      if (editingRole) {
+        await updateRole(editingRole.id, {
+          name: formName,
+          description: formDescription,
+        });
+        toast.success('Role updated');
+      } else {
+        await createRole({
+          name: formName,
+          description: formDescription,
+        });
+        toast.success('Role created');
+      }
+      setSheetOpen(false);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update role');
+      toast.error(error instanceof Error ? error.message : 'Failed to save role');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -74,95 +93,107 @@ export function RoleManager({ roles }: { roles: Role[] }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Roles</CardTitle>
-        <CardDescription>
-          Manage user types impacted by requirements. Mark a role as &ldquo;Global&rdquo; to indicate it applies to all users.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className='flex gap-2 mb-4'>
-          <Input
-            placeholder='New role name...'
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          />
-          <div className='flex items-center gap-2'>
-            <Checkbox
-              id='isGlobal'
-              checked={newIsGlobal}
-              onCheckedChange={(checked) => setNewIsGlobal(checked === true)}
-            />
-            <Label htmlFor='isGlobal' className='text-sm whitespace-nowrap'>
-              Global
-            </Label>
+    <>
+      <Card>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <div>
+              <CardTitle>Roles</CardTitle>
+              <CardDescription>
+                Manage user types impacted by requirements.
+              </CardDescription>
+            </div>
+            <Button onClick={openCreate}>
+              <IconPlus className='size-4 mr-1' />
+              Add Role
+            </Button>
           </div>
-          <Button onClick={handleCreate} disabled={isCreating || !newName.trim()}>
-            <IconPlus className='size-4 mr-1' />
-            Add
-          </Button>
-        </div>
-        <div className='space-y-2'>
-          {roles.map((role) => (
-            <div
-              key={role.id}
-              className='flex items-center justify-between rounded-md border p-3'
-            >
-              {editingId === role.id ? (
-                <div className='flex items-center gap-2 flex-1'>
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleUpdate(role.id)}
-                    className='h-8'
-                  />
-                  <Button size='icon' variant='ghost' onClick={() => handleUpdate(role.id)}>
-                    <IconCheck className='size-4' />
-                  </Button>
-                  <Button size='icon' variant='ghost' onClick={() => setEditingId(null)}>
-                    <IconX className='size-4' />
-                  </Button>
-                </div>
-              ) : (
-                <>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-2'>
+            {roles.map((role) => (
+              <div
+                key={role.id}
+                className='flex items-center justify-between rounded-md border p-3'
+              >
+                <div className='flex-1 min-w-0'>
                   <div className='flex items-center gap-2'>
                     <span className='font-medium'>{role.name}</span>
-                    {role.isGlobal && <Badge>Global</Badge>}
                     <Badge variant='secondary'>{role._count.requirements} requirements</Badge>
                   </div>
-                  <div className='flex items-center gap-1'>
-                    <Button
-                      size='icon'
-                      variant='ghost'
-                      onClick={() => {
-                        setEditingId(role.id);
-                        setEditName(role.name);
-                      }}
-                    >
-                      <IconPencil className='size-4' />
-                    </Button>
-                    <Button
-                      size='icon'
-                      variant='ghost'
-                      onClick={() => handleDelete(role.id)}
-                      disabled={role._count.requirements > 0}
-                    >
-                      <IconTrash className='size-4' />
-                    </Button>
-                  </div>
-                </>
-              )}
+                  {role.description && (
+                    <p className='text-sm text-muted-foreground mt-1 truncate'>{role.description}</p>
+                  )}
+                </div>
+                <div className='flex items-center gap-1 ml-2'>
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    onClick={() => openEdit(role)}
+                  >
+                    <IconPencil className='size-4' />
+                  </Button>
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    onClick={() => handleDelete(role.id)}
+                    disabled={role._count.requirements > 0}
+                  >
+                    <IconTrash className='size-4' />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {roles.length === 0 && (
+              <p className='text-muted-foreground text-sm text-center py-4'>
+                No roles yet. Click &ldquo;Add Role&rdquo; to create your first role.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editingRole ? 'Edit Role' : 'New Role'}</SheetTitle>
+            <SheetDescription>
+              {editingRole
+                ? 'Update the role details below.'
+                : 'Define a new role that can be assigned to requirements.'}
+            </SheetDescription>
+          </SheetHeader>
+          <div className='space-y-4 px-4 mt-6'>
+            <div className='space-y-2'>
+              <Label htmlFor='role-name'>Name</Label>
+              <Input
+                id='role-name'
+                placeholder='e.g. Administrator, Instructor, Student...'
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              />
             </div>
-          ))}
-          {roles.length === 0 && (
-            <p className='text-muted-foreground text-sm text-center py-4'>
-              No roles yet. Create your first role above.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <div className='space-y-2'>
+              <Label htmlFor='role-description'>Description</Label>
+              <Textarea
+                id='role-description'
+                placeholder='Describe what this role represents and its responsibilities...'
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <Button
+              className='w-full'
+              onClick={handleSave}
+              disabled={isSaving || !formName.trim()}
+            >
+              {isSaving ? 'Saving...' : editingRole ? 'Update Role' : 'Create Role'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

@@ -41,15 +41,13 @@ type ReleaseDetailProps = {
     status: string;
     publishedAt: Date | null;
     createdAt: Date;
-    createdBy: { id: string; name: string };
     revisions: {
       id: string;
       type: string;
       title: string;
       content: string;
       createdAt: Date;
-      createdBy: { id: string; name: string };
-      roles: { role: { id: string; name: string; isGlobal: boolean } }[];
+      roles: { role: { id: string; name: string } }[];
       requirement: {
         id: string;
         domain: { id: string; name: string };
@@ -123,9 +121,6 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                     ? `Published ${new Date(release.publishedAt).toLocaleDateString()}`
                     : `Created ${new Date(release.createdAt).toLocaleDateString()}`}
                 </span>
-                <span className='text-muted-foreground text-sm'>
-                  by {release.createdBy.name}
-                </span>
               </div>
             </div>
             {isDraft && (
@@ -196,7 +191,6 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                     <TableHead>Domain</TableHead>
                     <TableHead>Roles</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Author</TableHead>
                     {isDraft && <TableHead></TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -241,9 +235,6 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                         >
                           {rev.type}
                         </Badge>
-                      </TableCell>
-                      <TableCell className='text-muted-foreground text-sm'>
-                        {rev.createdBy.name}
                       </TableCell>
                       {isDraft && (
                         <TableCell>

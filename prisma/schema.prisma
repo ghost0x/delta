@@ -81,17 +81,34 @@ model Verification {
 model Domain {
   id           String        @id @default(uuid())
   name         String        @unique
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  requirements Requirement[]
+  categories   Category[]
+
+  @@map("domain")
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  description  String?
+  domainId     String
+  domain       Domain        @relation(fields: [domainId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   requirements Requirement[]
 
-  @@map("domain")
+  @@unique([domainId, name])
+  @@index([domainId])
+  @@map("category")
 }
 
 model BusinessRole {
   id            String            @id @default(uuid())
   name          String            @unique
-  isGlobal      Boolean           @default(false)
+  description   String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   requirements  RequirementRole[]
@@ -103,16 +120,20 @@ model BusinessRole {
 model Requirement {
   id          String            @id @default(uuid())
   title       String
+  status      String            @default("unverified") // "unverified" | "verified"
   domainId    String
   domain      Domain            @relation(fields: [domainId], references: [id])
+  categoryId  String
+  category    Category          @relation(fields: [categoryId], references: [id])
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  createdById String
-  createdBy   User              @relation("RequirementsCreated", fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?             @relation("RequirementsCreated", fields: [createdById], references: [id])
   roles       RequirementRole[]
   revisions   Revision[]
 
   @@index([domainId])
+  @@index([categoryId])
   @@map("requirement")
 }
 
@@ -136,8 +157,8 @@ model Revision {
   releaseId     String?
   release       Release?       @relation(fields: [releaseId], references: [id])
   createdAt     DateTime       @default(now())
-  createdById   String
-  createdBy     User           @relation("RevisionsCreated", fields: [createdById], references: [id])
+  createdById   String?
+  createdBy     User?          @relation("RevisionsCreated", fields: [createdById], references: [id])
   roles         RevisionRole[]
 
   @@index([requirementId])
@@ -163,8 +184,8 @@ model Release {
   publishedAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  createdById String
-  createdBy   User       @relation("ReleasesCreated", fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?      @relation("ReleasesCreated", fields: [createdById], references: [id])
   revisions   Revision[]
 
   @@map("release")

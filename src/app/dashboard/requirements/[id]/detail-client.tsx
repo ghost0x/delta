@@ -6,16 +6,15 @@ import { RevisionTimeline } from '@/components/requirements/revision-timeline';
 import { RevisionFormSheet } from '@/components/requirements/revision-form-sheet';
 
 type Release = { id: string; name: string; status: string };
-type Role = { id: string; name: string; isGlobal: boolean };
+type Role = { id: string; name: string };
 type Revision = {
   id: string;
   type: string;
   title: string;
   content: string;
   createdAt: Date;
-  createdBy: { id: string; name: string };
   release: { id: string; name: string; status: string; publishedAt: Date | null } | null;
-  roles: { role: { id: string; name: string; isGlobal: boolean } }[];
+  roles: { role: { id: string; name: string } }[];
 };
 
 export function RequirementDetailClient({

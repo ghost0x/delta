@@ -1,12 +1,30 @@
 import { getRequirements } from '@/server/requirements';
 import { getRoles } from '@/server/roles';
+import { getDomains } from '@/server/domains';
 import { RequirementsTable } from '@/components/requirements/requirements-table';
+import { RequirementsFilter } from '@/components/requirements/requirements-filter';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { IconPlus } from '@tabler/icons-react';
 
-export default async function DashboardPage() {
-  const [requirements, roles] = await Promise.all([getRequirements(), getRoles()]);
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams: Promise<{ domainId?: string; categoryId?: string; search?: string; status?: string }>;
+}) {
+  const params = await searchParams;
+  const filters = {
+    domainId: params.domainId || undefined,
+    categoryId: params.categoryId || undefined,
+    search: params.search || undefined,
+    status: params.status || undefined,
+  };
+
+  const [requirements, roles, domains] = await Promise.all([
+    getRequirements(filters),
+    getRoles(),
+    getDomains()
+  ]);
 
   return (
     <div className='flex flex-1 flex-col'>
@@ -24,6 +42,9 @@ export default async function DashboardPage() {
               New Requirement
             </Link>
           </Button>
+        </div>
+        <div className='px-4 lg:px-6'>
+          <RequirementsFilter domains={domains} />
         </div>
         <div className='px-4 lg:px-6'>
           <RequirementsTable requirements={requirements} totalRoleCount={roles.length} />

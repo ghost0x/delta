@@ -29,14 +29,14 @@ export default async function RequirementDetailPage({
     status: r.status
   }));
 
-  const rolesList = roles.map((r) => ({ id: r.id, name: r.name, isGlobal: r.isGlobal }));
+  const rolesList = roles.map((r) => ({ id: r.id, name: r.name }));
 
   const hasDraft = requirement.revisions.some(
     (r) => !r.release || r.release.status === 'draft'
   );
 
   const baselineRoles = requirement.currentBaseline
-    ? (requirement.currentBaseline as { roles: { role: { id: string; name: string; isGlobal: boolean } }[] }).roles ?? []
+    ? (requirement.currentBaseline as { roles: { role: { id: string; name: string } }[] }).roles ?? []
     : requirement.roles;
 
   const currentRoleIds = baselineRoles.map((r: { role: { id: string } }) => r.role.id);
@@ -49,14 +49,19 @@ export default async function RequirementDetailPage({
             requirement={{
               id: requirement.id,
               title: requirement.title,
+              status: requirement.status,
               domain: requirement.domain,
-              createdBy: requirement.createdBy,
+              category: requirement.category,
               createdAt: requirement.createdAt,
               isDeprecated: requirement.isDeprecated ?? false,
               hasDraft,
               hasBaseline: !!requirement.currentBaseline
             }}
-            domains={domains.map((d) => ({ id: d.id, name: d.name }))}
+            domains={domains.map((d) => ({
+              id: d.id,
+              name: d.name,
+              categories: d.categories.map((c) => ({ id: c.id, name: c.name, domainId: c.domainId }))
+            }))}
             roles={rolesList}
             baselineRoles={baselineRoles}
           />

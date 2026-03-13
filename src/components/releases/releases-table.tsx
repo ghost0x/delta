@@ -18,7 +18,6 @@ type ReleaseRow = {
   status: string;
   publishedAt: Date | null;
   createdAt: Date;
-  createdBy: { id: string; name: string };
   _count: { revisions: number };
 };
 
@@ -42,7 +41,6 @@ export function ReleasesTable({ releases }: { releases: ReleaseRow[] }) {
             <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Revisions</TableHead>
-            <TableHead>Created By</TableHead>
             <TableHead>Date</TableHead>
           </TableRow>
         </TableHeader>
@@ -70,9 +68,6 @@ export function ReleasesTable({ releases }: { releases: ReleaseRow[] }) {
                 </Badge>
               </TableCell>
               <TableCell>{release._count.revisions}</TableCell>
-              <TableCell className='text-muted-foreground text-sm'>
-                {release.createdBy.name}
-              </TableCell>
               <TableCell className='text-muted-foreground text-sm'>
                 {release.publishedAt
                   ? new Date(release.publishedAt).toLocaleDateString()

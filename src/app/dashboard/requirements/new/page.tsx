@@ -17,8 +17,13 @@ export default async function NewRequirementPage() {
       <div className='flex flex-col gap-4 py-4 md:gap-6 md:py-6'>
         <div className='px-4 lg:px-6'>
           <RequirementForm
-            domains={domains}
-            roles={roles}
+            domains={domains.map((d) => ({
+              id: d.id,
+              name: d.name,
+              description: d.description,
+              categories: d.categories.map((c) => ({ id: c.id, name: c.name, description: c.description, domainId: c.domainId }))
+            }))}
+            roles={roles.map((r) => ({ id: r.id, name: r.name, description: r.description }))}
             draftReleases={draftReleases}
           />
         </div>

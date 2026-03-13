@@ -16,8 +16,9 @@ import {
 import { toast } from 'sonner';
 import type { AiRequirementOutput } from '@/lib/ai/requirement-schema';
 
-type Domain = { id: string; name: string };
-type Role = { id: string; name: string; isGlobal: boolean };
+type Category = { id: string; name: string; description: string | null; domainId: string };
+type Domain = { id: string; name: string; description: string | null; categories: Category[] };
+type Role = { id: string; name: string; description: string | null };
 
 export function AiGenerateDialog({
   domains,
@@ -45,8 +46,12 @@ export function AiGenerateDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           description,
-          domains: domains.map((d) => d.name),
-          roles: roles.map((r) => r.name),
+          domains: domains.map((d) => ({
+            name: d.name,
+            description: d.description,
+            categories: d.categories.map((c) => ({ name: c.name, description: c.description }))
+          })),
+          roles: roles.map((r) => ({ name: r.name, description: r.description })),
         }),
       });
 

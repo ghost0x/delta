@@ -13,18 +13,15 @@ import {
 
 import { NavMain } from '@/components/admin/layout/nav-main';
 import { NavSecondary } from '@/components/admin/layout/nav-secondary';
-import { NavUser } from '@/components/admin/layout/nav-user';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { userType } from '@/types/user';
 
 const data = {
   navMain: [
@@ -63,10 +60,7 @@ const data = {
   ]
 };
 
-export function AppSidebar({
-  user,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & { user: userType }) {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible='offcanvas' {...props}>
       <SidebarHeader>
@@ -88,9 +82,6 @@ export function AppSidebar({
         <NavMain items={data.navMain} />
         <NavSecondary items={data.navSecondary} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
-      </SidebarFooter>
     </Sidebar>
   );
 }

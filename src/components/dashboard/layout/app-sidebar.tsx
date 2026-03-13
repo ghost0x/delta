@@ -11,18 +11,15 @@ import {
 } from '@tabler/icons-react';
 
 import { NavMain } from '@/components/dashboard/layout/nav-main';
-import { NavUser } from '@/components/admin/layout/nav-user';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { userType } from '@/types/user';
 
 const data = {
   navMain: [
@@ -54,10 +51,7 @@ const data = {
   ]
 };
 
-export function AppSidebar({
-  user,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & { user: userType }) {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible='offcanvas' {...props}>
       <SidebarHeader>
@@ -78,9 +72,6 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
-      </SidebarFooter>
     </Sidebar>
   );
 }

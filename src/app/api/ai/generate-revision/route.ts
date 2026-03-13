@@ -1,8 +1,6 @@
-import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { auth } from '@/lib/auth';
 import { aiRevisionSchema } from '@/lib/ai/revision-schema';
 
 const SYSTEM_PROMPT = `You are an Expert Business Systems Analyst. Your job is to take an existing business requirement and a description of a requested change, then produce a revised version of the requirement.
@@ -31,14 +29,6 @@ Use the format: [Entity] : [Condition/Action]
 Keep it short and scannable. Update the title if the change significantly alters the requirement's scope.`;
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { originalTitle, originalContent, originalRoles, changeDescription, roles } = await request.json();
 
   const client = new Anthropic();
