@@ -57,9 +57,9 @@ export async function getCurrentBaseline(requirementId: string) {
   return prisma.revision.findFirst({
     where: {
       requirementId,
-      release: { status: 'published' }
+      status: { in: ['published', 'deprecated'] }
     },
-    orderBy: { release: { publishedAt: 'desc' } },
+    orderBy: { createdAt: 'desc' },
     include: {
       release: {
         select: { id: true, name: true, publishedAt: true }
@@ -95,8 +95,8 @@ export async function updateRevision(
     include: { release: true }
   });
   if (!revision) throw new Error('Revision not found');
-  if (revision.release?.status === 'published') {
-    throw new Error('Cannot edit revisions in published releases');
+  if (revision.status === 'published' || revision.status === 'deprecated') {
+    throw new Error('Cannot edit published or deprecated revisions');
   }
 
   if (data.roleIds) {
@@ -106,11 +106,15 @@ export async function updateRevision(
     });
   }
 
+  // Reset verified revision to unverified after edit
+  const newStatus = revision.status === 'verified' ? 'unverified' : revision.status;
+
   return prisma.revision.update({
     where: { id: revisionId },
     data: {
       content: data.content,
-      ...(data.title !== undefined && { title: data.title })
+      ...(data.title !== undefined && { title: data.title }),
+      status: newStatus
     },
     include: {
       requirement: { select: { id: true, title: true } },
@@ -126,11 +130,56 @@ export async function deleteRevision(revisionId: string) {
     include: { release: true }
   });
   if (!revision) throw new Error('Revision not found');
-  if (revision.release?.status === 'published') {
-    throw new Error('Cannot delete revisions in published releases');
+  if (revision.status === 'published' || revision.status === 'deprecated') {
+    throw new Error('Cannot delete published or deprecated revisions');
   }
 
   return prisma.revision.delete({ where: { id: revisionId } });
+}
+
+export async function verifyRevision(revisionId: string) {
+  const revision = await prisma.revision.findUnique({
+    where: { id: revisionId },
+    include: { release: true }
+  });
+  if (!revision) throw new Error('Revision not found');
+  if (revision.status !== 'unverified') {
+    throw new Error('Only unverified revisions can be verified');
+  }
+
+  // Baseline-assigned revisions auto-publish
+  const isBaseline = revision.release?.name === 'Baseline' && revision.release?.status === 'published';
+  const newStatus = isBaseline ? 'published' : 'verified';
+
+  return prisma.revision.update({
+    where: { id: revisionId },
+    data: { status: newStatus },
+    include: {
+      requirement: { select: { id: true, title: true } },
+      release: { select: { id: true, name: true, status: true } },
+      ...revisionRolesInclude
+    }
+  });
+}
+
+export async function unverifyRevision(revisionId: string) {
+  const revision = await prisma.revision.findUnique({
+    where: { id: revisionId }
+  });
+  if (!revision) throw new Error('Revision not found');
+  if (revision.status !== 'verified') {
+    throw new Error('Only verified revisions can be unverified');
+  }
+
+  return prisma.revision.update({
+    where: { id: revisionId },
+    data: { status: 'unverified' },
+    include: {
+      requirement: { select: { id: true, title: true } },
+      release: { select: { id: true, name: true, status: true } },
+      ...revisionRolesInclude
+    }
+  });
 }
 
 export async function assignRevisionToBaseline(userId: string | undefined, revisionId: string) {
@@ -141,13 +190,13 @@ export async function assignRevisionToBaseline(userId: string | undefined, revis
     include: { release: true, roles: true }
   });
   if (!revision) throw new Error('Revision not found');
-  if (revision.release?.status === 'published') {
-    throw new Error('Revision is already in a published release');
+  if (revision.status === 'published' || revision.status === 'deprecated') {
+    throw new Error('Revision is already published or deprecated');
   }
 
   await prisma.revision.update({
     where: { id: revisionId },
-    data: { releaseId: baseline.id }
+    data: { releaseId: baseline.id, status: 'published' }
   });
 
   await prisma.requirementRole.deleteMany({
@@ -169,8 +218,8 @@ export async function unassignRevisionFromRelease(revisionId: string) {
     where: { id: revisionId },
     include: { release: true }
   });
-  if (revision?.release?.status === 'published') {
-    throw new Error('Cannot unassign revisions from published releases');
+  if (revision?.status === 'published' || revision?.status === 'deprecated') {
+    throw new Error('Cannot unassign published or deprecated revisions');
   }
 
   return prisma.revision.update({

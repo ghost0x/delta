@@ -12,11 +12,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { StatusBadge } from '@/components/requirements/status-badge';
 import {
   deleteRevision,
   assignRevisionToRelease,
   unassignRevisionFromRelease,
-  assignRevisionToBaseline
+  assignRevisionToBaseline,
+  verifyRevision,
+  unverifyRevision
 } from '@/server/revisions';
 import { toast } from 'sonner';
 
@@ -26,6 +29,7 @@ type Role = { id: string; name: string };
 type Revision = {
   id: string;
   type: string;
+  status: string;
   title: string;
   content: string;
   createdAt: Date;
@@ -46,12 +50,8 @@ function RevisionTypeBadge({ type }: { type: string }) {
   }
 }
 
-function isPublished(revision: Revision) {
-  return revision.release?.status === 'published';
-}
-
-function isDraft(revision: Revision) {
-  return !revision.release || revision.release.status === 'draft';
+function isEditable(revision: Revision) {
+  return revision.status === 'unverified' || revision.status === 'verified';
 }
 
 function ReleaseSelector({
@@ -118,8 +118,9 @@ function RevisionCard({
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
-  const draft = isDraft(revision);
-  const published = isPublished(revision);
+  const [verifying, setVerifying] = useState(false);
+  const editable = isEditable(revision);
+  const isPublishedRelease = revision.release?.status === 'published';
 
   const handleDelete = async () => {
     try {
@@ -134,22 +135,58 @@ function RevisionCard({
     }
   };
 
+  const handleVerify = async () => {
+    try {
+      setVerifying(true);
+      await verifyRevision(revision.id);
+      toast.success('Revision verified');
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to verify revision');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleUnverify = async () => {
+    try {
+      setVerifying(true);
+      await unverifyRevision(revision.id);
+      toast.success('Revision set to unverified');
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to unverify revision');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className='py-3'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
-            <RevisionTypeBadge type={revision.type} />
-            {published ? (
-              <Badge variant='default'>
-                {revision.release!.name} (published)
+            <StatusBadge status={revision.status} />
+            {isPublishedRelease ? (
+              <Badge variant='outline'>
+                {revision.release!.name}
               </Badge>
             ) : (
-              <ReleaseSelector revision={revision} draftReleases={draftReleases} />
+              editable && <ReleaseSelector revision={revision} draftReleases={draftReleases} />
             )}
           </div>
           <div className='flex items-center gap-2'>
-            {draft && (
+            {revision.status === 'unverified' && (
+              <Button variant='outline' size='sm' onClick={handleVerify} disabled={verifying}>
+                {verifying ? 'Verifying...' : 'Verify'}
+              </Button>
+            )}
+            {revision.status === 'verified' && (
+              <Button variant='ghost' size='sm' onClick={handleUnverify} disabled={verifying}>
+                Unverify
+              </Button>
+            )}
+            {editable && (
               <>
                 <Button variant='ghost' size='sm' onClick={() => onEdit(revision)}>
                   Edit

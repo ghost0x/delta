@@ -69,9 +69,11 @@ export function ReleasesTable({ releases }: { releases: ReleaseRow[] }) {
               </TableCell>
               <TableCell>{release._count.revisions}</TableCell>
               <TableCell className='text-muted-foreground text-sm'>
-                {release.publishedAt
-                  ? new Date(release.publishedAt).toLocaleDateString()
-                  : new Date(release.createdAt).toLocaleDateString()}
+                {release.name === 'Baseline'
+                  ? '—'
+                  : release.publishedAt
+                    ? new Date(release.publishedAt).toLocaleDateString()
+                    : new Date(release.createdAt).toLocaleDateString()}
               </TableCell>
             </TableRow>
           ))}

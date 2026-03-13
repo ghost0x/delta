@@ -31,7 +31,7 @@ export async function createRequirement(data: {
 
 export async function updateRequirement(
   id: string,
-  data: { title?: string; domainId?: string; categoryId?: string; status?: string }
+  data: { title?: string; domainId?: string; categoryId?: string }
 ) {
   return requirementService.updateRequirement(id, data);
 }

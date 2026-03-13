@@ -120,7 +120,6 @@ model BusinessRole {
 model Requirement {
   id          String            @id @default(uuid())
   title       String
-  status      String            @default("unverified") // "unverified" | "verified"
   domainId    String
   domain      Domain            @relation(fields: [domainId], references: [id])
   categoryId  String
@@ -152,6 +151,7 @@ model Revision {
   requirementId String
   requirement   Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
   type          String         // "baseline" | "change" | "deprecation"
+  status        String         @default("unverified") // "unverified" | "verified" | "published" | "deprecated"
   title         String
   content       String
   releaseId     String?

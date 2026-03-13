@@ -39,6 +39,14 @@ export async function deleteRevision(revisionId: string) {
   return revisionService.deleteRevision(revisionId);
 }
 
+export async function verifyRevision(revisionId: string) {
+  return revisionService.verifyRevision(revisionId);
+}
+
+export async function unverifyRevision(revisionId: string) {
+  return revisionService.unverifyRevision(revisionId);
+}
+
 export async function assignRevisionToBaseline(revisionId: string) {
   return revisionService.assignRevisionToBaseline(undefined, revisionId);
 }

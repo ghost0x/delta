@@ -70,7 +70,7 @@ export async function publishRelease(id: string) {
     where: { id },
     include: {
       revisions: {
-        include: { roles: true }
+        include: { roles: true },
       }
     }
   });
@@ -79,6 +79,13 @@ export async function publishRelease(id: string) {
   if (release.status !== 'draft') throw new Error('Release is already published');
   if (release.revisions.length === 0) {
     throw new Error('Cannot publish a release with no revisions');
+  }
+
+  const unverified = release.revisions.filter((r) => r.status !== 'verified');
+  if (unverified.length > 0) {
+    throw new Error(
+      `Cannot publish: ${unverified.length} revision(s) are not verified`
+    );
   }
 
   const published = await prisma.release.update({
@@ -90,6 +97,12 @@ export async function publishRelease(id: string) {
   });
 
   for (const revision of release.revisions) {
+    const revisionStatus = revision.type === 'deprecation' ? 'deprecated' : 'published';
+    await prisma.revision.update({
+      where: { id: revision.id },
+      data: { status: revisionStatus }
+    });
+
     await prisma.requirementRole.deleteMany({
       where: { requirementId: revision.requirementId }
     });

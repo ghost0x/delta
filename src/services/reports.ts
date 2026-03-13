@@ -60,14 +60,10 @@ export async function generateDeltaReport(
     const previousBaseline = await prisma.revision.findFirst({
       where: {
         requirementId: revision.requirementId,
-        release: {
-          status: 'published',
-          publishedAt: release.publishedAt
-            ? { lt: release.publishedAt }
-            : undefined
-        }
+        status: { in: ['published', 'deprecated'] },
+        createdAt: { lt: revision.createdAt }
       },
-      orderBy: { release: { publishedAt: 'desc' } },
+      orderBy: { createdAt: 'desc' },
       include: { roles: { include: { role: true } } }
     });
 
@@ -101,8 +97,8 @@ export async function generateBaselineReport(): Promise<BaselineReport> {
     include: {
       domain: true,
       revisions: {
-        where: { release: { status: 'published' } },
-        orderBy: { release: { publishedAt: 'desc' } },
+        where: { status: { in: ['published', 'deprecated'] } },
+        orderBy: { createdAt: 'desc' },
         take: 1,
         include: {
           release: { select: { name: true, publishedAt: true } },
@@ -117,7 +113,7 @@ export async function generateBaselineReport(): Promise<BaselineReport> {
   for (const req of requirements) {
     const latestRevision = req.revisions[0];
     if (!latestRevision) continue;
-    if (latestRevision.type === 'deprecation') continue;
+    if (latestRevision.status === 'deprecated') continue;
 
     const domainName = req.domain.name;
     if (!items[domainName]) items[domainName] = [];

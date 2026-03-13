@@ -19,12 +19,18 @@ type Domain = {
   categories: { id: string; name: string }[];
 };
 
-export function RequirementsFilter({ domains }: { domains: Domain[] }) {
+type Role = {
+  id: string;
+  name: string;
+};
+
+export function RequirementsFilter({ domains, roles }: { domains: Domain[]; roles: Role[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const domainId = searchParams.get('domainId') ?? '';
   const categoryId = searchParams.get('categoryId') ?? '';
+  const roleId = searchParams.get('roleId') ?? '';
   const search = searchParams.get('search') ?? '';
   const status = searchParams.get('status') ?? '';
 
@@ -33,7 +39,7 @@ export function RequirementsFilter({ domains }: { domains: Domain[] }) {
   const selectedDomain = domains.find((d) => d.id === domainId);
   const categories = selectedDomain?.categories ?? [];
 
-  const hasFilters = domainId || categoryId || search || status;
+  const hasFilters = domainId || categoryId || roleId || search || status;
 
   useEffect(() => {
     setKeyword(search);
@@ -63,6 +69,10 @@ export function RequirementsFilter({ domains }: { domains: Domain[] }) {
 
   const handleCategoryChange = (value: string) => {
     updateParams({ categoryId: value === 'all' ? null : value });
+  };
+
+  const handleRoleChange = (value: string) => {
+    updateParams({ roleId: value === 'all' ? null : value });
   };
 
   const handleStatusChange = (value: string) => {
@@ -113,14 +123,30 @@ export function RequirementsFilter({ domains }: { domains: Domain[] }) {
         </SelectContent>
       </Select>
 
+      <Select value={roleId || 'all'} onValueChange={handleRoleChange}>
+        <SelectTrigger className='w-[180px]'>
+          <SelectValue placeholder='All Roles' />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value='all'>All Roles</SelectItem>
+          {roles.map((r) => (
+            <SelectItem key={r.id} value={r.id}>
+              {r.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       <Select value={status || 'all'} onValueChange={handleStatusChange}>
         <SelectTrigger className='w-[180px]'>
           <SelectValue placeholder='All Statuses' />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value='all'>All Statuses</SelectItem>
-          <SelectItem value='verified'>Verified</SelectItem>
           <SelectItem value='unverified'>Unverified</SelectItem>
+          <SelectItem value='verified'>Verified</SelectItem>
+          <SelectItem value='published'>Published</SelectItem>
+          <SelectItem value='deprecated'>Deprecated</SelectItem>
         </SelectContent>
       </Select>
 

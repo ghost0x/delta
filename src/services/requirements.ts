@@ -1,5 +1,16 @@
 import prisma from '@/lib/prisma';
 
+type RevisionStatus = 'unverified' | 'verified' | 'published' | 'deprecated';
+
+export function deriveRequirementStatus(
+  revisions: { status: string }[]
+): RevisionStatus {
+  if (revisions.some((r) => r.status === 'deprecated')) return 'deprecated';
+  if (revisions.some((r) => r.status === 'published')) return 'published';
+  if (revisions.some((r) => r.status === 'verified')) return 'verified';
+  return 'unverified';
+}
+
 export async function getRequirements(filters?: {
   domainId?: string;
   categoryId?: string;
@@ -27,9 +38,6 @@ export async function getRequirements(filters?: {
   if (filters?.search) {
     where.title = { contains: filters.search, mode: 'insensitive' };
   }
-  if (filters?.status) {
-    where.status = filters.status;
-  }
 
   const requirements = await prisma.requirement.findMany({
     where,
@@ -47,21 +55,24 @@ export async function getRequirements(filters?: {
     }
   });
 
-  return requirements.map((req) => {
-    const baselineRevision = req.revisions.find(
-      (r) => r.release?.status === 'published'
-    );
-    const hasDraft = req.revisions.some((r) => !r.release || r.release.status === 'draft');
-    const isDeprecated =
-      baselineRevision?.type === 'deprecation';
+  const mapped = requirements.map((req) => {
+    const derivedStatus = deriveRequirementStatus(req.revisions);
+    const currentBaseline = req.revisions.find(
+      (r) => r.status === 'published' || r.status === 'deprecated'
+    ) ?? null;
 
     return {
       ...req,
-      currentBaseline: baselineRevision ?? null,
-      hasDraft,
-      isDeprecated
+      derivedStatus,
+      currentBaseline
     };
   });
+
+  if (filters?.status) {
+    return mapped.filter((req) => req.derivedStatus === filters.status);
+  }
+
+  return mapped;
 }
 
 export async function getRequirement(id: string) {
@@ -85,14 +96,15 @@ export async function getRequirement(id: string) {
 
   if (!requirement) return null;
 
-  const baselineRevision = requirement.revisions.find(
-    (r) => r.release?.status === 'published'
-  );
+  const derivedStatus = deriveRequirementStatus(requirement.revisions);
+  const currentBaseline = requirement.revisions.find(
+    (r) => r.status === 'published' || r.status === 'deprecated'
+  ) ?? null;
 
   return {
     ...requirement,
-    currentBaseline: baselineRevision ?? null,
-    isDeprecated: baselineRevision?.type === 'deprecation'
+    derivedStatus,
+    currentBaseline
   };
 }
 
@@ -146,18 +158,12 @@ export async function createRequirement(userId: string | undefined, data: {
 
 export async function updateRequirement(
   id: string,
-  data: { title?: string; domainId?: string; categoryId?: string; status?: string }
+  data: { title?: string; domainId?: string; categoryId?: string }
 ) {
   const updateData: Record<string, unknown> = {};
   if (data.title) updateData.title = data.title.trim();
   if (data.domainId) updateData.domainId = data.domainId;
   if (data.categoryId) updateData.categoryId = data.categoryId;
-  if (data.status) {
-    if (!['unverified', 'verified'].includes(data.status)) {
-      throw new Error('Status must be "unverified" or "verified"');
-    }
-    updateData.status = data.status;
-  }
 
   return prisma.requirement.update({
     where: { id },

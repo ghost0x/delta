@@ -27,8 +27,9 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { StatusBadge } from '@/components/requirements/status-badge';
 import { publishRelease, deleteRelease } from '@/server/releases';
-import { unassignRevisionFromRelease } from '@/server/revisions';
+import { unassignRevisionFromRelease, verifyRevision } from '@/server/revisions';
 import { toast } from 'sonner';
 import { IconTrash, IconSend, IconX } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -44,6 +45,7 @@ type ReleaseDetailProps = {
     revisions: {
       id: string;
       type: string;
+      status: string;
       title: string;
       content: string;
       createdAt: Date;
@@ -61,6 +63,8 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const isDraft = release.status === 'draft';
+
+  const unverifiedCount = release.revisions.filter((r) => r.status !== 'verified').length;
 
   const handlePublish = async () => {
     try {
@@ -102,6 +106,18 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
     }
   };
 
+  const handleVerifyRevision = async (revisionId: string) => {
+    try {
+      await verifyRevision(revisionId);
+      toast.success('Revision verified');
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to verify revision'
+      );
+    }
+  };
+
   return (
     <div className='space-y-6'>
       <Card>
@@ -116,11 +132,13 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                 <Badge variant={isDraft ? 'secondary' : 'default'}>
                   {release.status}
                 </Badge>
-                <span className='text-muted-foreground text-sm'>
-                  {release.publishedAt
-                    ? `Published ${new Date(release.publishedAt).toLocaleDateString()}`
-                    : `Created ${new Date(release.createdAt).toLocaleDateString()}`}
-                </span>
+                {release.name !== 'Baseline' && (
+                  <span className='text-muted-foreground text-sm'>
+                    {release.publishedAt
+                      ? `Published ${new Date(release.publishedAt).toLocaleDateString()}`
+                      : `Created ${new Date(release.createdAt).toLocaleDateString()}`}
+                  </span>
+                )}
               </div>
             </div>
             {isDraft && (
@@ -141,6 +159,11 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                         revision(s) will become the new baseline.
                       </DialogDescription>
                     </DialogHeader>
+                    {unverifiedCount > 0 && (
+                      <div className='rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200'>
+                        {unverifiedCount} revision(s) are not verified. All revisions must be verified before publishing.
+                      </div>
+                    )}
                     <DialogFooter>
                       <Button
                         variant='outline'
@@ -148,7 +171,7 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handlePublish} disabled={isPublishing}>
+                      <Button onClick={handlePublish} disabled={isPublishing || unverifiedCount > 0}>
                         {isPublishing ? 'Publishing...' : 'Confirm Publish'}
                       </Button>
                     </DialogFooter>
@@ -191,6 +214,7 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                     <TableHead>Domain</TableHead>
                     <TableHead>Roles</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
                     {isDraft && <TableHead></TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -235,6 +259,21 @@ export function ReleaseDetail({ release, totalRoleCount }: ReleaseDetailProps & 
                         >
                           {rev.type}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className='flex items-center gap-2'>
+                          <StatusBadge status={rev.status} />
+                          {isDraft && rev.status === 'unverified' && (
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              className='h-6 text-xs'
+                              onClick={() => handleVerifyRevision(rev.id)}
+                            >
+                              Verify
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       {isDraft && (
                         <TableCell>

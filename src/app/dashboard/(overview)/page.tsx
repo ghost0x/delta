@@ -10,12 +10,13 @@ import { IconPlus } from '@tabler/icons-react';
 export default async function DashboardPage({
   searchParams
 }: {
-  searchParams: Promise<{ domainId?: string; categoryId?: string; search?: string; status?: string }>;
+  searchParams: Promise<{ domainId?: string; categoryId?: string; roleId?: string; search?: string; status?: string }>;
 }) {
   const params = await searchParams;
   const filters = {
     domainId: params.domainId || undefined,
     categoryId: params.categoryId || undefined,
+    roleId: params.roleId || undefined,
     search: params.search || undefined,
     status: params.status || undefined,
   };
@@ -44,7 +45,7 @@ export default async function DashboardPage({
           </Button>
         </div>
         <div className='px-4 lg:px-6'>
-          <RequirementsFilter domains={domains} />
+          <RequirementsFilter domains={domains} roles={roles} />
         </div>
         <div className='px-4 lg:px-6'>
           <RequirementsTable requirements={requirements} totalRoleCount={roles.length} />

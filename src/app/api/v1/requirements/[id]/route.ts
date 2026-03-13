@@ -23,7 +23,8 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const data = await requirementService.updateRequirement(id, body);
+    const { title, domainId, categoryId } = body;
+    const data = await requirementService.updateRequirement(id, { title, domainId, categoryId });
     return NextResponse.json({ data });
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : 'Failed to update requirement');

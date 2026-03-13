@@ -13,7 +13,7 @@ export function register(server: McpServer, client: DeltaClient) {
       categoryName: z.string().optional().describe('Filter by category name (case-insensitive, alternative to categoryId)'),
       roleId: z.string().optional().describe('Filter by role ID'),
       search: z.string().optional().describe('Search by keyword in title (case-insensitive)'),
-      status: z.enum(['verified', 'unverified']).optional().describe('Filter by verification status'),
+      status: z.enum(['unverified', 'verified', 'published', 'deprecated']).optional().describe('Filter by derived status (unverified, verified, published, deprecated)'),
     },
     async (params) => {
       try {
@@ -76,7 +76,6 @@ export function register(server: McpServer, client: DeltaClient) {
       title: z.string().optional().describe('New title'),
       domainId: z.string().optional().describe('New domain ID'),
       categoryId: z.string().optional().describe('New category ID'),
-      status: z.enum(['unverified', 'verified']).optional().describe('Verification status'),
     },
     async ({ id, ...body }) => {
       try {

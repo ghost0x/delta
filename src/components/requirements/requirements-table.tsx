@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { StatusBadge, VerificationBadge } from '@/components/requirements/status-badge';
+import { StatusBadge } from '@/components/requirements/status-badge';
 import {
   Table,
   TableBody,
@@ -15,13 +15,10 @@ import {
 type RequirementRow = {
   id: string;
   title: string;
-  status: string;
+  derivedStatus: string;
   domain: { id: string; name: string };
   category: { id: string; name: string };
   roles: { role: { id: string; name: string } }[];
-  currentBaseline: { content: string; type: string } | null;
-  hasDraft: boolean;
-  isDeprecated: boolean;
   updatedAt: Date;
 };
 
@@ -53,7 +50,6 @@ export function RequirementsTable({
             <TableHead>Category</TableHead>
             <TableHead>Roles</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Verification</TableHead>
             <TableHead>Updated</TableHead>
           </TableRow>
         </TableHeader>
@@ -88,14 +84,7 @@ export function RequirementsTable({
                 </div>
               </TableCell>
               <TableCell>
-                <StatusBadge
-                  isDeprecated={req.isDeprecated}
-                  hasDraft={req.hasDraft}
-                  hasBaseline={!!req.currentBaseline}
-                />
-              </TableCell>
-              <TableCell>
-                <VerificationBadge status={req.status} />
+                <StatusBadge status={req.derivedStatus} />
               </TableCell>
               <TableCell className='text-muted-foreground text-sm'>
                 {new Date(req.updatedAt).toLocaleDateString()}

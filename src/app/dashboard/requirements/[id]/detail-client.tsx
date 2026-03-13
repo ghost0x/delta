@@ -10,6 +10,7 @@ type Role = { id: string; name: string };
 type Revision = {
   id: string;
   type: string;
+  status: string;
   title: string;
   content: string;
   createdAt: Date;

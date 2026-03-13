@@ -114,4 +114,18 @@ export function register(server: McpServer, client: DeltaClient) {
       }
     }
   );
+
+  server.tool(
+    'verify_revision',
+    'Verify a revision. Only unverified revisions can be verified. Baseline-assigned revisions are auto-published.',
+    { id: z.string().describe('Revision ID') },
+    async ({ id }) => {
+      try {
+        const data = await client.post(`/api/v1/revisions/${id}/verify`);
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      } catch (e) {
+        return { content: [{ type: 'text', text: (e as Error).message }], isError: true };
+      }
+    }
+  );
 }

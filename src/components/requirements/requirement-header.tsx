@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { StatusBadge, VerificationBadge } from '@/components/requirements/status-badge';
+import { StatusBadge } from '@/components/requirements/status-badge';
 import { updateRequirement, deleteRequirement } from '@/server/requirements';
 import { toast } from 'sonner';
 
@@ -28,13 +28,10 @@ export function RequirementHeader({
   requirement: {
     id: string;
     title: string;
-    status: string;
+    derivedStatus: string;
     domain: { id: string; name: string };
     category: { id: string; name: string };
     createdAt: Date;
-    isDeprecated: boolean;
-    hasDraft: boolean;
-    hasBaseline: boolean;
   };
   domains: Domain[];
   roles: Role[];
@@ -224,27 +221,7 @@ export function RequirementHeader({
               </Badge>
             ))
           )}
-          <StatusBadge
-            isDeprecated={requirement.isDeprecated}
-            hasDraft={requirement.hasDraft}
-            hasBaseline={requirement.hasBaseline}
-          />
-          <button
-            onClick={async () => {
-              const newStatus = requirement.status === 'verified' ? 'unverified' : 'verified';
-              try {
-                await updateRequirement(requirement.id, { status: newStatus });
-                toast.success(`Status changed to ${newStatus}`);
-                router.refresh();
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : 'Failed to update status');
-              }
-            }}
-            title='Click to toggle verification status'
-            className='cursor-pointer'
-          >
-            <VerificationBadge status={requirement.status} />
-          </button>
+          <StatusBadge status={requirement.derivedStatus} />
         </div>
         <p className='text-muted-foreground text-sm mt-1'>
           Created {new Date(requirement.createdAt).toLocaleDateString()}

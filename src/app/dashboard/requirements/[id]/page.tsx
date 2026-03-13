@@ -31,10 +31,6 @@ export default async function RequirementDetailPage({
 
   const rolesList = roles.map((r) => ({ id: r.id, name: r.name }));
 
-  const hasDraft = requirement.revisions.some(
-    (r) => !r.release || r.release.status === 'draft'
-  );
-
   const baselineRoles = requirement.currentBaseline
     ? (requirement.currentBaseline as { roles: { role: { id: string; name: string } }[] }).roles ?? []
     : requirement.roles;
@@ -49,13 +45,10 @@ export default async function RequirementDetailPage({
             requirement={{
               id: requirement.id,
               title: requirement.title,
-              status: requirement.status,
+              derivedStatus: requirement.derivedStatus,
               domain: requirement.domain,
               category: requirement.category,
-              createdAt: requirement.createdAt,
-              isDeprecated: requirement.isDeprecated ?? false,
-              hasDraft,
-              hasBaseline: !!requirement.currentBaseline
+              createdAt: requirement.createdAt
             }}
             domains={domains.map((d) => ({
               id: d.id,
