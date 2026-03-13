@@ -5,7 +5,7 @@ import { DeltaClient } from '../client.js';
 export function register(server: McpServer, client: DeltaClient) {
   server.tool(
     'list_requirements',
-    'List all requirements with optional filters. Supports filtering by domain (ID or name), category (ID or name), role ID, verification status, and keyword search. All filters are combined with AND logic.',
+    'List requirements with optional filters and pagination. Supports filtering by domain (ID or name), category (ID or name), role ID, verification status, and keyword search. All filters are combined with AND logic. Returns paginated results (default 50 per page). Set pageSize to 0 for all results.',
     {
       domainId: z.string().optional().describe('Filter by domain ID'),
       domainName: z.string().optional().describe('Filter by domain name (case-insensitive, alternative to domainId)'),
@@ -14,6 +14,8 @@ export function register(server: McpServer, client: DeltaClient) {
       roleId: z.string().optional().describe('Filter by role ID'),
       search: z.string().optional().describe('Search by keyword in title (case-insensitive)'),
       status: z.enum(['unverified', 'verified', 'published', 'deprecated']).optional().describe('Filter by derived status (unverified, verified, published, deprecated)'),
+      page: z.number().int().min(1).optional().describe('Page number (default: 1)'),
+      pageSize: z.number().int().min(0).optional().describe('Results per page (default: 50, 0 for all results)'),
     },
     async (params) => {
       try {
@@ -25,6 +27,8 @@ export function register(server: McpServer, client: DeltaClient) {
         if (params.roleId) query.set('roleId', params.roleId);
         if (params.search) query.set('search', params.search);
         if (params.status) query.set('status', params.status);
+        if (params.page) query.set('page', params.page.toString());
+        if (params.pageSize !== undefined) query.set('pageSize', params.pageSize.toString());
         const qs = query.toString();
         const data = await client.get(`/api/v1/requirements${qs ? `?${qs}` : ''}`);
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };

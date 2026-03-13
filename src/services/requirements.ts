@@ -19,6 +19,8 @@ export async function getRequirements(filters?: {
   domainName?: string;
   categoryName?: string;
   status?: string;
+  page?: number;
+  pageSize?: number;
 }) {
   const where: Record<string, unknown> = {};
 
@@ -38,6 +40,9 @@ export async function getRequirements(filters?: {
   if (filters?.search) {
     where.title = { contains: filters.search, mode: 'insensitive' };
   }
+
+  const page = filters?.page ?? 1;
+  const pageSize = filters?.pageSize ?? 50;
 
   const requirements = await prisma.requirement.findMany({
     where,
@@ -68,11 +73,24 @@ export async function getRequirements(filters?: {
     };
   });
 
-  if (filters?.status) {
-    return mapped.filter((req) => req.derivedStatus === filters.status);
+  const filtered = filters?.status
+    ? mapped.filter((req) => req.derivedStatus === filters.status)
+    : mapped;
+
+  const total = filtered.length;
+
+  if (pageSize <= 0) {
+    return { data: filtered, pagination: { page: 1, pageSize: total, total, totalPages: 1 } };
   }
 
-  return mapped;
+  const totalPages = Math.ceil(total / pageSize);
+  const start = (page - 1) * pageSize;
+  const paginated = filtered.slice(start, start + pageSize);
+
+  return {
+    data: paginated,
+    pagination: { page, pageSize, total, totalPages },
+  };
 }
 
 export async function getRequirement(id: string) {

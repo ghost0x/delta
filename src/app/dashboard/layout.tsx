@@ -2,6 +2,8 @@ import { AppSidebar } from '@/components/dashboard/layout/app-sidebar';
 import { SiteHeader } from '@/components/dashboard/layout/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
   children
 }: {

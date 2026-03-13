@@ -10,6 +10,8 @@ export async function getRequirements(filters?: {
   domainName?: string;
   categoryName?: string;
   status?: string;
+  page?: number;
+  pageSize?: number;
 }) {
   return requirementService.getRequirements(filters);
 }

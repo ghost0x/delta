@@ -5,6 +5,8 @@ import * as requirementService from '@/services/requirements';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
     const filters = {
       domainId: searchParams.get('domainId') ?? undefined,
       categoryId: searchParams.get('categoryId') ?? undefined,
@@ -13,9 +15,11 @@ export async function GET(request: NextRequest) {
       domainName: searchParams.get('domainName') ?? undefined,
       categoryName: searchParams.get('categoryName') ?? undefined,
       status: searchParams.get('status') ?? undefined,
+      page: pageParam ? parseInt(pageParam, 10) : undefined,
+      pageSize: pageSizeParam ? parseInt(pageSizeParam, 10) : undefined,
     };
-    const data = await requirementService.getRequirements(filters);
-    return NextResponse.json({ data });
+    const result = await requirementService.getRequirements(filters);
+    return NextResponse.json(result);
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : 'Failed to fetch requirements');
   }

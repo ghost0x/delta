@@ -9,9 +9,8 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: 'Next.js + Better Auth + Prisma Template',
-  description:
-    'A starter template for Next.js projects using Better Auth and Prisma.'
+  title: 'Delta',
+  description: 'Business Requirements Management'
 };
 
 export default function RootLayout({

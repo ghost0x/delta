@@ -21,11 +21,12 @@ export default async function DashboardPage({
     status: params.status || undefined,
   };
 
-  const [requirements, roles, domains] = await Promise.all([
-    getRequirements(filters),
+  const [requirementsResult, roles, domains] = await Promise.all([
+    getRequirements({ ...filters, pageSize: 0 }),
     getRoles(),
     getDomains()
   ]);
+  const requirements = requirementsResult.data;
 
   return (
     <div className='flex flex-1 flex-col'>
